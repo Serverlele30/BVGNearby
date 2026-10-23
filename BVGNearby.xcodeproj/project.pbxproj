@@ -8,27 +8,88 @@
 
 /* Begin PBXBuildFile section */
 		659F88D5308B5CF700D46649 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 659F88D4308B5CF700D46649 /* AppDelegate.m */; };
-		659F88D8308B5CF700D46649 /* SceneDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 659F88D7308B5CF700D46649 /* SceneDelegate.m */; };
 		659F88DB308B5CF700D46649 /* ViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 659F88DA308B5CF700D46649 /* ViewController.m */; };
-		659F88DE308B5CF700D46649 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 659F88DC308B5CF700D46649 /* Main.storyboard */; };
 		659F88E0308B5CFA00D46649 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 659F88DF308B5CFA00D46649 /* Assets.xcassets */; };
 		659F88E3308B5CFA00D46649 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 659F88E1308B5CFA00D46649 /* LaunchScreen.storyboard */; };
 		659F88E6308B5CFA00D46649 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 659F88E5308B5CFA00D46649 /* main.m */; };
+		65AABC6C308B75F30050A7AC /* TripViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 65AABC6B308B75F30050A7AC /* TripViewController.m */; };
+		65AABC77308B7A0E0050A7AC /* DepartureCell.m in Sources */ = {isa = PBXBuildFile; fileRef = 65AABC6D308B7A0D0050A7AC /* DepartureCell.m */; };
+		65AABC78308B7A0E0050A7AC /* SearchViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 65AABC6E308B7A0D0050A7AC /* SearchViewController.m */; };
+		65AABC79308B7A0E0050A7AC /* StopViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 65AABC6F308B7A0D0050A7AC /* StopViewController.m */; };
+		65AABC7A308B7A0E0050A7AC /* AlarmsViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 65AABC70308B7A0D0050A7AC /* AlarmsViewController.m */; };
+		65AABC7B308B7A0E0050A7AC /* BVGAPI.m in Sources */ = {isa = PBXBuildFile; fileRef = 65AABC76308B7A0E0050A7AC /* BVGAPI.m */; };
+		65AABC87308B7D8C0050A7AC /* BVGAnnotation.m in Sources */ = {isa = PBXBuildFile; fileRef = 65AABC7C308B7D8A0050A7AC /* BVGAnnotation.m */; };
+		65AABC88308B7D8C0050A7AC /* TripMapViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 65AABC7D308B7D8A0050A7AC /* TripMapViewController.m */; };
+		65AABC89308B7D8C0050A7AC /* JourneyDetailViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 65AABC7F308B7D8B0050A7AC /* JourneyDetailViewController.m */; };
+		65AABC8A308B7D8C0050A7AC /* JourneyViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 65AABC80308B7D8B0050A7AC /* JourneyViewController.m */; };
+		65AABC8B308B7D8C0050A7AC /* LIESMICH.txt in Resources */ = {isa = PBXBuildFile; fileRef = 65AABC85308B7D8B0050A7AC /* LIESMICH.txt */; };
+		65AABC8C308B7D8C0050A7AC /* MapViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 65AABC86308B7D8C0050A7AC /* MapViewController.m */; };
+		65AABC91308B81050050A7AC /* GuidanceViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 65AABC8E308B81040050A7AC /* GuidanceViewController.m */; };
+		65AABC92308B81050050A7AC /* GuidanceManager.m in Sources */ = {isa = PBXBuildFile; fileRef = 65AABC90308B81050050A7AC /* GuidanceManager.m */; };
+		65AABC98308B83BE0050A7AC /* SettingsViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 65AABC94308B83BE0050A7AC /* SettingsViewController.m */; };
+		65AABC99308B83BE0050A7AC /* BVGSettings.m in Sources */ = {isa = PBXBuildFile; fileRef = 65AABC95308B83BE0050A7AC /* BVGSettings.m */; };
+		65AABC9C308B87630050A7AC /* AppIcon.appiconset in Resources */ = {isa = PBXBuildFile; fileRef = 65AABC9B308B87630050A7AC /* AppIcon.appiconset */; };
+		65AABCA5308B87E00050A7AC /* CardCell.m in Sources */ = {isa = PBXBuildFile; fileRef = 65AABC9E308B87E00050A7AC /* CardCell.m */; };
+		65AABCA6308B87E00050A7AC /* ChipBar.m in Sources */ = {isa = PBXBuildFile; fileRef = 65AABCA1308B87E00050A7AC /* ChipBar.m */; };
+		65AABCA7308B87E00050A7AC /* BVGTheme.m in Sources */ = {isa = PBXBuildFile; fileRef = 65AABCA3308B87E00050A7AC /* BVGTheme.m */; };
+		65AABCA8308B87E00050A7AC /* CardTableViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 65AABCA4308B87E00050A7AC /* CardTableViewController.m */; };
+		65AABCAC308B91540050A7AC /* add_files.rb in Resources */ = {isa = PBXBuildFile; fileRef = 65AABCA9308B91530050A7AC /* add_files.rb */; };
+		65AABCAD308B91540050A7AC /* DisruptionsViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 65AABCAB308B91540050A7AC /* DisruptionsViewController.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		659F88D0308B5CF700D46649 /* BVGNearby.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BVGNearby.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		659F88D3308B5CF700D46649 /* AppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
 		659F88D4308B5CF700D46649 /* AppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppDelegate.m; sourceTree = "<group>"; };
-		659F88D6308B5CF700D46649 /* SceneDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SceneDelegate.h; sourceTree = "<group>"; };
-		659F88D7308B5CF700D46649 /* SceneDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SceneDelegate.m; sourceTree = "<group>"; };
 		659F88D9308B5CF700D46649 /* ViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ViewController.h; sourceTree = "<group>"; };
 		659F88DA308B5CF700D46649 /* ViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ViewController.m; sourceTree = "<group>"; };
-		659F88DD308B5CF700D46649 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
 		659F88DF308B5CFA00D46649 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		659F88E2308B5CFA00D46649 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		659F88E4308B5CFA00D46649 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		659F88E5308B5CFA00D46649 /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
+		65AABC6A308B75CF0050A7AC /* TripViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TripViewController.h; sourceTree = "<group>"; };
+		65AABC6B308B75F30050A7AC /* TripViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = TripViewController.m; sourceTree = "<group>"; };
+		65AABC6D308B7A0D0050A7AC /* DepartureCell.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = DepartureCell.m; sourceTree = "<group>"; };
+		65AABC6E308B7A0D0050A7AC /* SearchViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = SearchViewController.m; sourceTree = "<group>"; };
+		65AABC6F308B7A0D0050A7AC /* StopViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = StopViewController.m; sourceTree = "<group>"; };
+		65AABC70308B7A0D0050A7AC /* AlarmsViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = AlarmsViewController.m; sourceTree = "<group>"; };
+		65AABC71308B7A0D0050A7AC /* StopViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = StopViewController.h; sourceTree = "<group>"; };
+		65AABC72308B7A0E0050A7AC /* SearchViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SearchViewController.h; sourceTree = "<group>"; };
+		65AABC73308B7A0E0050A7AC /* DepartureCell.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DepartureCell.h; sourceTree = "<group>"; };
+		65AABC74308B7A0E0050A7AC /* BVGAPI.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = BVGAPI.h; sourceTree = "<group>"; };
+		65AABC75308B7A0E0050A7AC /* AlarmsViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AlarmsViewController.h; sourceTree = "<group>"; };
+		65AABC76308B7A0E0050A7AC /* BVGAPI.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = BVGAPI.m; sourceTree = "<group>"; };
+		65AABC7C308B7D8A0050A7AC /* BVGAnnotation.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = BVGAnnotation.m; sourceTree = "<group>"; };
+		65AABC7D308B7D8A0050A7AC /* TripMapViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = TripMapViewController.m; sourceTree = "<group>"; };
+		65AABC7E308B7D8A0050A7AC /* TripMapViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = TripMapViewController.h; sourceTree = "<group>"; };
+		65AABC7F308B7D8B0050A7AC /* JourneyDetailViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = JourneyDetailViewController.m; sourceTree = "<group>"; };
+		65AABC80308B7D8B0050A7AC /* JourneyViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = JourneyViewController.m; sourceTree = "<group>"; };
+		65AABC81308B7D8B0050A7AC /* JourneyViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = JourneyViewController.h; sourceTree = "<group>"; };
+		65AABC82308B7D8B0050A7AC /* BVGAnnotation.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = BVGAnnotation.h; sourceTree = "<group>"; };
+		65AABC83308B7D8B0050A7AC /* JourneyDetailViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = JourneyDetailViewController.h; sourceTree = "<group>"; };
+		65AABC84308B7D8B0050A7AC /* MapViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MapViewController.h; sourceTree = "<group>"; };
+		65AABC85308B7D8B0050A7AC /* LIESMICH.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = LIESMICH.txt; sourceTree = "<group>"; };
+		65AABC86308B7D8C0050A7AC /* MapViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = MapViewController.m; sourceTree = "<group>"; };
+		65AABC8D308B81040050A7AC /* GuidanceManager.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = GuidanceManager.h; sourceTree = "<group>"; };
+		65AABC8E308B81040050A7AC /* GuidanceViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GuidanceViewController.m; sourceTree = "<group>"; };
+		65AABC8F308B81050050A7AC /* GuidanceViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = GuidanceViewController.h; sourceTree = "<group>"; };
+		65AABC90308B81050050A7AC /* GuidanceManager.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GuidanceManager.m; sourceTree = "<group>"; };
+		65AABC93308B83BE0050A7AC /* BVGSettings.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = BVGSettings.h; sourceTree = "<group>"; };
+		65AABC94308B83BE0050A7AC /* SettingsViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = SettingsViewController.m; sourceTree = "<group>"; };
+		65AABC95308B83BE0050A7AC /* BVGSettings.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = BVGSettings.m; sourceTree = "<group>"; };
+		65AABC97308B83BE0050A7AC /* SettingsViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SettingsViewController.h; sourceTree = "<group>"; };
+		65AABC9B308B87630050A7AC /* AppIcon.appiconset */ = {isa = PBXFileReference; lastKnownFileType = folder; path = AppIcon.appiconset; sourceTree = "<group>"; };
+		65AABC9D308B87E00050A7AC /* CardCell.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CardCell.h; sourceTree = "<group>"; };
+		65AABC9E308B87E00050A7AC /* CardCell.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = CardCell.m; sourceTree = "<group>"; };
+		65AABC9F308B87E00050A7AC /* ChipBar.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ChipBar.h; sourceTree = "<group>"; };
+		65AABCA0308B87E00050A7AC /* BVGTheme.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = BVGTheme.h; sourceTree = "<group>"; };
+		65AABCA1308B87E00050A7AC /* ChipBar.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ChipBar.m; sourceTree = "<group>"; };
+		65AABCA2308B87E00050A7AC /* CardTableViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CardTableViewController.h; sourceTree = "<group>"; };
+		65AABCA3308B87E00050A7AC /* BVGTheme.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = BVGTheme.m; sourceTree = "<group>"; };
+		65AABCA4308B87E00050A7AC /* CardTableViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = CardTableViewController.m; sourceTree = "<group>"; };
+		65AABCA9308B91530050A7AC /* add_files.rb */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.ruby; path = add_files.rb; sourceTree = "<group>"; };
+		65AABCAA308B91530050A7AC /* DisruptionsViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DisruptionsViewController.h; sourceTree = "<group>"; };
+		65AABCAB308B91540050A7AC /* DisruptionsViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = DisruptionsViewController.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -61,17 +122,57 @@
 		659F88D2308B5CF700D46649 /* BVGNearby */ = {
 			isa = PBXGroup;
 			children = (
+				65AABC6A308B75CF0050A7AC /* TripViewController.h */,
+				65AABC6B308B75F30050A7AC /* TripViewController.m */,
 				659F88D3308B5CF700D46649 /* AppDelegate.h */,
 				659F88D4308B5CF700D46649 /* AppDelegate.m */,
-				659F88D6308B5CF700D46649 /* SceneDelegate.h */,
-				659F88D7308B5CF700D46649 /* SceneDelegate.m */,
 				659F88D9308B5CF700D46649 /* ViewController.h */,
 				659F88DA308B5CF700D46649 /* ViewController.m */,
-				659F88DC308B5CF700D46649 /* Main.storyboard */,
 				659F88DF308B5CFA00D46649 /* Assets.xcassets */,
 				659F88E1308B5CFA00D46649 /* LaunchScreen.storyboard */,
 				659F88E4308B5CFA00D46649 /* Info.plist */,
 				659F88E5308B5CFA00D46649 /* main.m */,
+				65AABC75308B7A0E0050A7AC /* AlarmsViewController.h */,
+				65AABC70308B7A0D0050A7AC /* AlarmsViewController.m */,
+				65AABC74308B7A0E0050A7AC /* BVGAPI.h */,
+				65AABC93308B83BE0050A7AC /* BVGSettings.h */,
+				65AABC95308B83BE0050A7AC /* BVGSettings.m */,
+				65AABC9B308B87630050A7AC /* AppIcon.appiconset */,
+				65AABC97308B83BE0050A7AC /* SettingsViewController.h */,
+				65AABC94308B83BE0050A7AC /* SettingsViewController.m */,
+				65AABC76308B7A0E0050A7AC /* BVGAPI.m */,
+				65AABCA9308B91530050A7AC /* add_files.rb */,
+				65AABCAA308B91530050A7AC /* DisruptionsViewController.h */,
+				65AABCAB308B91540050A7AC /* DisruptionsViewController.m */,
+				65AABC73308B7A0E0050A7AC /* DepartureCell.h */,
+				65AABC6D308B7A0D0050A7AC /* DepartureCell.m */,
+				65AABC72308B7A0E0050A7AC /* SearchViewController.h */,
+				65AABC6E308B7A0D0050A7AC /* SearchViewController.m */,
+				65AABCA0308B87E00050A7AC /* BVGTheme.h */,
+				65AABCA3308B87E00050A7AC /* BVGTheme.m */,
+				65AABC9D308B87E00050A7AC /* CardCell.h */,
+				65AABC9E308B87E00050A7AC /* CardCell.m */,
+				65AABCA2308B87E00050A7AC /* CardTableViewController.h */,
+				65AABCA4308B87E00050A7AC /* CardTableViewController.m */,
+				65AABC9F308B87E00050A7AC /* ChipBar.h */,
+				65AABCA1308B87E00050A7AC /* ChipBar.m */,
+				65AABC71308B7A0D0050A7AC /* StopViewController.h */,
+				65AABC6F308B7A0D0050A7AC /* StopViewController.m */,
+				65AABC8D308B81040050A7AC /* GuidanceManager.h */,
+				65AABC90308B81050050A7AC /* GuidanceManager.m */,
+				65AABC8F308B81050050A7AC /* GuidanceViewController.h */,
+				65AABC8E308B81040050A7AC /* GuidanceViewController.m */,
+				65AABC82308B7D8B0050A7AC /* BVGAnnotation.h */,
+				65AABC7C308B7D8A0050A7AC /* BVGAnnotation.m */,
+				65AABC83308B7D8B0050A7AC /* JourneyDetailViewController.h */,
+				65AABC7F308B7D8B0050A7AC /* JourneyDetailViewController.m */,
+				65AABC81308B7D8B0050A7AC /* JourneyViewController.h */,
+				65AABC80308B7D8B0050A7AC /* JourneyViewController.m */,
+				65AABC85308B7D8B0050A7AC /* LIESMICH.txt */,
+				65AABC84308B7D8B0050A7AC /* MapViewController.h */,
+				65AABC86308B7D8C0050A7AC /* MapViewController.m */,
+				65AABC7E308B7D8A0050A7AC /* TripMapViewController.h */,
+				65AABC7D308B7D8A0050A7AC /* TripMapViewController.m */,
 			);
 			path = BVGNearby;
 			sourceTree = "<group>";
@@ -133,9 +234,11 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				65AABCAC308B91540050A7AC /* add_files.rb in Resources */,
+				65AABC9C308B87630050A7AC /* AppIcon.appiconset in Resources */,
 				659F88E3308B5CFA00D46649 /* LaunchScreen.storyboard in Resources */,
 				659F88E0308B5CFA00D46649 /* Assets.xcassets in Resources */,
-				659F88DE308B5CF700D46649 /* Main.storyboard in Resources */,
+				65AABC8B308B7D8C0050A7AC /* LIESMICH.txt in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -146,24 +249,35 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				65AABC91308B81050050A7AC /* GuidanceViewController.m in Sources */,
+				65AABC8A308B7D8C0050A7AC /* JourneyViewController.m in Sources */,
+				65AABC7B308B7A0E0050A7AC /* BVGAPI.m in Sources */,
+				65AABCA8308B87E00050A7AC /* CardTableViewController.m in Sources */,
+				65AABC88308B7D8C0050A7AC /* TripMapViewController.m in Sources */,
+				65AABCA5308B87E00050A7AC /* CardCell.m in Sources */,
+				65AABC89308B7D8C0050A7AC /* JourneyDetailViewController.m in Sources */,
+				65AABC7A308B7A0E0050A7AC /* AlarmsViewController.m in Sources */,
+				65AABC87308B7D8C0050A7AC /* BVGAnnotation.m in Sources */,
+				65AABC92308B81050050A7AC /* GuidanceManager.m in Sources */,
 				659F88DB308B5CF700D46649 /* ViewController.m in Sources */,
+				65AABC98308B83BE0050A7AC /* SettingsViewController.m in Sources */,
+				65AABC77308B7A0E0050A7AC /* DepartureCell.m in Sources */,
+				65AABCAD308B91540050A7AC /* DisruptionsViewController.m in Sources */,
+				65AABC6C308B75F30050A7AC /* TripViewController.m in Sources */,
 				659F88D5308B5CF700D46649 /* AppDelegate.m in Sources */,
+				65AABC79308B7A0E0050A7AC /* StopViewController.m in Sources */,
+				65AABC99308B83BE0050A7AC /* BVGSettings.m in Sources */,
+				65AABC78308B7A0E0050A7AC /* SearchViewController.m in Sources */,
+				65AABCA7308B87E00050A7AC /* BVGTheme.m in Sources */,
+				65AABCA6308B87E00050A7AC /* ChipBar.m in Sources */,
 				659F88E6308B5CFA00D46649 /* main.m in Sources */,
-				659F88D8308B5CF700D46649 /* SceneDelegate.m in Sources */,
+				65AABC8C308B7D8C0050A7AC /* MapViewController.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXVariantGroup section */
-		659F88DC308B5CF700D46649 /* Main.storyboard */ = {
-			isa = PBXVariantGroup;
-			children = (
-				659F88DD308B5CF700D46649 /* Base */,
-			);
-			name = Main.storyboard;
-			sourceTree = "<group>";
-		};
 		659F88E1308B5CFA00D46649 /* LaunchScreen.storyboard */ = {
 			isa = PBXVariantGroup;
 			children = (
@@ -226,7 +340,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -279,7 +393,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = iphoneos;
@@ -292,7 +406,10 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGNING_REQUIRED = NO;
+				CODE_SIGN_IDENTITY = "Apple Development: aaronkastl@web.de (P8TY627ZUW)";
+				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 95DARFF4KP;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -319,7 +436,10 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGNING_REQUIRED = NO;
+				CODE_SIGN_IDENTITY = "Apple Development: aaronkastl@web.de (P8TY627ZUW)";
+				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 95DARFF4KP;
 				GENERATE_INFOPLIST_FILE = YES;

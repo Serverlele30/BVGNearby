@@ -1,0 +1,20 @@
+BVGNearby v8 – Schnellziele, Richtungsfilter, Hinweise, Teilen
+===============================================================
+
+1) Alle Dateien aus dem ZIP in den Ordner BVGNearby/ kopieren (ersetzen).
+
+2) Neue Dateien ins Xcode-Projekt aufnehmen – automatisch:
+     sudo gem install xcodeproj        # einmalig
+     ruby BVGNearby/add_files.rb       # im Ordner neben BVGNearby.xcodeproj
+
+   Oder von Hand: File → Add Files … → DisruptionsViewController.h/.m
+   (Target BVGNearby anhaken, "Copy items" aus).
+
+   Tipp: add_files.rb kannst du auch oben in deploy.sh eintragen,
+   dann passiert das bei jedem Build automatisch.
+
+3) ./deploy.sh
+
+Geändert: BVGSettings, SearchViewController, JourneyViewController,
+StopViewController, ViewController, SettingsViewController, GuidanceViewController
+Neu: DisruptionsViewController, add_files.rb
