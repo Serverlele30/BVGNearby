@@ -16,9 +16,38 @@
 @property (nonatomic, strong) UITabBarController *tabs;
 @end
 
+// Absturz-Melder: speichert Grund + Stack einer nicht abgefangenen Exception,
+// beim naechsten Start wird beides angezeigt (iOS 9 schreibt den Grund nicht in den Crash-Report).
+static NSString * const kLastCrashKey = @"lastCrash";
+
+static void BVGUncaughtException(NSException *e) {
+    NSArray *stack = e.callStackSymbols ?: @[];
+    stack = [stack subarrayWithRange:NSMakeRange(0, MIN((NSUInteger)25, stack.count))];
+    NSString *report = [NSString stringWithFormat:@"%@\n%@\n\n%@", e.name, e.reason ?: @"(kein Grund)",
+                        [stack componentsJoinedByString:@"\n"]];
+    [[NSUserDefaults standardUserDefaults] setObject:report forKey:kLastCrashKey];
+    [[NSUserDefaults standardUserDefaults] synchronize];
+}
+
 @implementation AppDelegate
 
+- (void)showLastCrashIfAny {
+    NSString *report = [[NSUserDefaults standardUserDefaults] stringForKey:kLastCrashKey];
+    if (!report) return;
+    [[NSUserDefaults standardUserDefaults] removeObjectForKey:kLastCrashKey];
+
+    UIAlertController *a = [UIAlertController alertControllerWithTitle:@"Letzter Absturz"
+                                                               message:report
+                                                        preferredStyle:UIAlertControllerStyleAlert];
+    [a addAction:[UIAlertAction actionWithTitle:@"Kopieren" style:UIAlertActionStyleDefault handler:^(UIAlertAction *x) {
+        [UIPasteboard generalPasteboard].string = report;
+    }]];
+    [a addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleCancel handler:nil]];
+    [self.window.rootViewController presentViewController:a animated:YES completion:nil];
+}
+
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
+    NSSetUncaughtExceptionHandler(&BVGUncaughtException);
     [application registerUserNotificationSettings:
         [UIUserNotificationSettings settingsForTypes:(UIUserNotificationTypeAlert | UIUserNotificationTypeSound | UIUserNotificationTypeBadge)
                                           categories:nil]];
@@ -48,6 +77,9 @@
     self.window.tintColor = [BVGTheme textPrimary];
     self.window.rootViewController = self.tabs;
     [self.window makeKeyAndVisible];
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.8 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        [self showLastCrashIfAny];
+    });
 
     // Favoriten in die iOS-Suche aufnehmen (falls frisch installiert)
     for (NSDictionary *f in [BVGAPI favorites]) [BVGAPI indexStopInSpotlight:f[@"id"] name:f[@"name"]];

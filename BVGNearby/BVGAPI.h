@@ -10,7 +10,7 @@ extern NSString * const BVGAlarmsChangedNotification;
 
 // Netzwerk
 + (void)getJSON:(NSString *)path completion:(void (^)(id json, NSError *error))completion;
-+ (NSString *)encode:(NSString *)s;
++ (NSString *)encode:(id)value;   // NSString, NSNumber, nil/NSNull -> URL-kodiert
 + (NSString *)lastSource;   // "serverlele" oder "transport.rest" - wer zuletzt geantwortet hat
 
 // Zeit

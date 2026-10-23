@@ -28,7 +28,6 @@
 		65AABC92308B81050050A7AC /* GuidanceManager.m in Sources */ = {isa = PBXBuildFile; fileRef = 65AABC90308B81050050A7AC /* GuidanceManager.m */; };
 		65AABC98308B83BE0050A7AC /* SettingsViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 65AABC94308B83BE0050A7AC /* SettingsViewController.m */; };
 		65AABC99308B83BE0050A7AC /* BVGSettings.m in Sources */ = {isa = PBXBuildFile; fileRef = 65AABC95308B83BE0050A7AC /* BVGSettings.m */; };
-		65AABC9C308B87630050A7AC /* AppIcon.appiconset in Resources */ = {isa = PBXBuildFile; fileRef = 65AABC9B308B87630050A7AC /* AppIcon.appiconset */; };
 		65AABCA5308B87E00050A7AC /* CardCell.m in Sources */ = {isa = PBXBuildFile; fileRef = 65AABC9E308B87E00050A7AC /* CardCell.m */; };
 		65AABCA6308B87E00050A7AC /* ChipBar.m in Sources */ = {isa = PBXBuildFile; fileRef = 65AABCA1308B87E00050A7AC /* ChipBar.m */; };
 		65AABCA7308B87E00050A7AC /* BVGTheme.m in Sources */ = {isa = PBXBuildFile; fileRef = 65AABCA3308B87E00050A7AC /* BVGTheme.m */; };
@@ -78,7 +77,6 @@
 		65AABC94308B83BE0050A7AC /* SettingsViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = SettingsViewController.m; sourceTree = "<group>"; };
 		65AABC95308B83BE0050A7AC /* BVGSettings.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = BVGSettings.m; sourceTree = "<group>"; };
 		65AABC97308B83BE0050A7AC /* SettingsViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SettingsViewController.h; sourceTree = "<group>"; };
-		65AABC9B308B87630050A7AC /* AppIcon.appiconset */ = {isa = PBXFileReference; lastKnownFileType = folder; path = AppIcon.appiconset; sourceTree = "<group>"; };
 		65AABC9D308B87E00050A7AC /* CardCell.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CardCell.h; sourceTree = "<group>"; };
 		65AABC9E308B87E00050A7AC /* CardCell.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = CardCell.m; sourceTree = "<group>"; };
 		65AABC9F308B87E00050A7AC /* ChipBar.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ChipBar.h; sourceTree = "<group>"; };
@@ -137,7 +135,6 @@
 				65AABC74308B7A0E0050A7AC /* BVGAPI.h */,
 				65AABC93308B83BE0050A7AC /* BVGSettings.h */,
 				65AABC95308B83BE0050A7AC /* BVGSettings.m */,
-				65AABC9B308B87630050A7AC /* AppIcon.appiconset */,
 				65AABC97308B83BE0050A7AC /* SettingsViewController.h */,
 				65AABC94308B83BE0050A7AC /* SettingsViewController.m */,
 				65AABC76308B7A0E0050A7AC /* BVGAPI.m */,
@@ -235,7 +232,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				65AABCAC308B91540050A7AC /* add_files.rb in Resources */,
-				65AABC9C308B87630050A7AC /* AppIcon.appiconset in Resources */,
 				659F88E3308B5CFA00D46649 /* LaunchScreen.storyboard in Resources */,
 				659F88E0308B5CFA00D46649 /* Assets.xcassets in Resources */,
 				65AABC8B308B7D8C0050A7AC /* LIESMICH.txt in Resources */,

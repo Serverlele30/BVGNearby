@@ -87,6 +87,22 @@ NSString * const BVGAlarmsChangedNotification    = @"BVGAlarmsChanged";
     }] resume];
 }
 
+// Fuer URL-Pfade und -Parameter: nur ASCII-Buchstaben/Ziffern bleiben unkodiert
+// (sonst liefert NSURL bei Umlauten nil). Nimmt auch NSNumber/NSNull entgegen.
++ (NSString *)encode:(id)value {
+    NSString *s = nil;
+    if ([value isKindOfClass:[NSString class]]) s = value;
+    else if (value && value != [NSNull null]) s = [value description];
+    if (!s.length) return @"";
+    static NSCharacterSet *allowed;
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{
+        allowed = [NSCharacterSet characterSetWithCharactersInString:
+            @"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._~"];
+    });
+    return [s stringByAddingPercentEncodingWithAllowedCharacters:allowed] ?: @"";
+}
+
 #pragma mark - Zeit
 
 + (NSDateFormatter *)isoFormatter {
