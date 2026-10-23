@@ -1,14 +1,63 @@
 #import "ViewController.h"
 #import "TripViewController.h"
 #import "StopViewController.h"
+#import "SearchViewController.h"
 #import "DepartureCell.h"
 #import "BVGAPI.h"
 #import "BVGSettings.h"
-#import "SettingsViewController.h"
 #import "DisruptionsViewController.h"
 #import <CoreLocation/CoreLocation.h>
 
 static NSString * const kCacheKey = @"nearbyCache";
+
+#pragma mark - Kopfzeile einer Haltestellen-Karte
+
+@interface StopHeaderCell : CardCell
+@property (nonatomic, strong) UIImageView *signView;
+@property (nonatomic, strong) UILabel *nameLabel;
+@property (nonatomic, strong) UILabel *metaLabel;
+@property (nonatomic, strong) UIButton *starButton;
+@end
+
+@implementation StopHeaderCell
+
+- (instancetype)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)reuseIdentifier {
+    self = [super initWithStyle:UITableViewCellStyleDefault reuseIdentifier:reuseIdentifier];
+    if (self) {
+        _signView = [[UIImageView alloc] initWithImage:[BVGAPI stopSignWithSize:24]];
+        [self.contentView addSubview:_signView];
+
+        _nameLabel = [[UILabel alloc] init];
+        _nameLabel.font = [BVGTheme font:16 weight:UIFontWeightSemibold];
+        _nameLabel.textColor = [BVGTheme textPrimary];
+        _nameLabel.adjustsFontSizeToFitWidth = YES;
+        _nameLabel.minimumScaleFactor = 0.85;
+        [self.contentView addSubview:_nameLabel];
+
+        _metaLabel = [[UILabel alloc] init];
+        _metaLabel.font = [BVGTheme font:12 weight:UIFontWeightRegular];
+        _metaLabel.textColor = [BVGTheme textSecondary];
+        [self.contentView addSubview:_metaLabel];
+
+        _starButton = [UIButton buttonWithType:UIButtonTypeCustom];
+        _starButton.titleLabel.font = [UIFont systemFontOfSize:20];
+        [self.contentView addSubview:_starButton];
+    }
+    return self;
+}
+
+- (void)layoutSubviews {
+    [super layoutSubviews];
+    CGFloat w = self.contentView.bounds.size.width;
+    self.signView.frame   = CGRectMake(12, 12, 24, 24);
+    self.nameLabel.frame  = CGRectMake(46, 7, w - 46 - 46, 20);
+    self.metaLabel.frame  = CGRectMake(46, 27, w - 46 - 46, 15);
+    self.starButton.frame = CGRectMake(w - 44, 2, 44, 44);
+}
+
+@end
+
+#pragma mark - Abfahrten in der Naehe
 
 @interface ViewController () <CLLocationManagerDelegate>
 @property (nonatomic, strong) CLLocationManager *locationManager;
@@ -31,11 +80,14 @@ static NSString * const kCacheKey = @"nearbyCache";
     self.largeTitle = @"Abfahrten";
     self.largeSubtitle = @"In deiner Nähe";
     self.stops = @[];
-    self.bannerCount = -1;
-    self.tableView.rowHeight = [DepartureCell height];
+    self.bannerCount = 0;
+    [self buildHeaderAccessory];
 
     self.refreshControl = [[UIRefreshControl alloc] init];
     [self.refreshControl addTarget:self action:@selector(refresh) forControlEvents:UIControlEventValueChanged];
+
+    UILongPressGestureRecognizer *press = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(longPress:)];
+    [self.tableView addGestureRecognizer:press];
 
     self.locationManager = [[CLLocationManager alloc] init];
     self.locationManager.delegate = self;
@@ -47,14 +99,8 @@ static NSString * const kCacheKey = @"nearbyCache";
     [nc addObserver:self.tableView selector:@selector(reloadData) name:BVGAlarmsChangedNotification object:nil];
     [nc addObserver:self selector:@selector(settingsChanged) name:BVGSettingsChangedNotification object:nil];
 
-    self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:@"Ansage"
-                                                                              style:UIBarButtonItemStylePlain
-                                                                             target:self action:@selector(announceNearest)];
-    self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:@"⚙︎"
-                                                                             style:UIBarButtonItemStylePlain
-                                                                            target:self action:@selector(openSettings)];
-    [self.navigationItem.leftBarButtonItem setTitleTextAttributes:@{ NSFontAttributeName: [UIFont systemFontOfSize:22] }
-                                                         forState:UIControlStateNormal];
+    self.navigationItem.rightBarButtonItem = [BVGAPI barButtonWithIcon:@"speaker" target:self action:@selector(announceNearest)];
+    self.navigationItem.rightBarButtonItem.accessibilityLabel = @"Abfahrten ansagen";
 
     // Sofort die letzten bekannten Daten zeigen, waehrend neu geladen wird
     if (![self loadCache]) [self showEmptyIcon:@"📍" title:@"Einen Moment" text:@"Suche Haltestellen in deiner Nähe …"];
@@ -92,15 +138,58 @@ static NSString * const kCacheKey = @"nearbyCache";
     [self.tableView reloadData];
 }
 
-- (void)openSettings {
-    UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:
-                                   [[SettingsViewController alloc] initWithStyle:UITableViewStyleGrouped]];
-    [self presentViewController:nav animated:YES completion:nil];
-}
-
 - (void)settingsChanged {
     [self.tableView reloadData];
     [self refresh];
+}
+
+#pragma mark - Kopfbereich: Suchfeld + Stoerungs-Hinweis
+
+- (void)buildHeaderAccessory {
+    CGFloat w = self.view.bounds.size.width;
+    CGFloat inset = [BVGTheme cardInset];
+    CGFloat h = 36 + (self.bannerCount > 0 ? 42 : 0);
+    UIView *v = [[UIView alloc] initWithFrame:CGRectMake(0, 0, w, h)];
+
+    // weisses "Suchfeld" - oeffnet die Haltestellensuche
+    UIButton *search = [UIButton buttonWithType:UIButtonTypeCustom];
+    search.frame = CGRectMake(inset, 0, w - 2 * inset, 36);
+    search.autoresizingMask = UIViewAutoresizingFlexibleWidth;
+    [search setBackgroundImage:[BVGTheme roundedImageWithColor:[BVGTheme searchField] radius:9] forState:UIControlStateNormal];
+    [search setBackgroundImage:[BVGTheme roundedImageWithColor:[BVGTheme cardPressed] radius:9] forState:UIControlStateHighlighted];
+    search.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeft;
+    search.contentEdgeInsets = UIEdgeInsetsMake(0, 10, 0, 10);
+    search.titleEdgeInsets = UIEdgeInsetsMake(0, 6, 0, -6);
+    [search setImage:[BVGAPI smallIconNamed:@"search" size:15] forState:UIControlStateNormal];
+    search.tintColor = [BVGTheme textSecondary];
+    search.titleLabel.font = [BVGTheme font:15 weight:UIFontWeightRegular];
+    [search setTitle:@"Haltestelle suchen" forState:UIControlStateNormal];
+    [search setTitleColor:[BVGTheme textSecondary] forState:UIControlStateNormal];
+    search.accessibilityLabel = @"Haltestelle suchen";
+    [search addTarget:self action:@selector(openSearch) forControlEvents:UIControlEventTouchUpInside];
+    [v addSubview:search];
+
+    // schwarzer Hinweis-Balken bei Stoerungen an den angezeigten Haltestellen
+    if (self.bannerCount > 0) {
+        UIButton *b = [UIButton buttonWithType:UIButtonTypeCustom];
+        b.frame = CGRectMake(inset, 42, w - 2 * inset, 34);
+        b.autoresizingMask = UIViewAutoresizingFlexibleWidth;
+        [b setBackgroundImage:[BVGTheme roundedImageWithColor:[BVGTheme accentSoft] radius:9] forState:UIControlStateNormal];
+        b.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeft;
+        b.contentEdgeInsets = UIEdgeInsetsMake(0, 12, 0, 12);
+        b.titleLabel.font = [BVGTheme font:13 weight:UIFontWeightSemibold];
+        [b setTitleColor:[BVGTheme warningText] forState:UIControlStateNormal];
+        [b setTitle:[NSString stringWithFormat:@"⚠︎  %ld %@ an deinen Haltestellen  ›", (long)self.bannerCount,
+                     self.bannerCount == 1 ? @"Hinweis" : @"Hinweise"] forState:UIControlStateNormal];
+        [b addTarget:self action:@selector(openDisruptions) forControlEvents:UIControlEventTouchUpInside];
+        [v addSubview:b];
+    }
+    self.headerAccessory = v;
+}
+
+- (void)openSearch {
+    SearchViewController *search = [[SearchViewController alloc] initWithStyle:UITableViewStylePlain];
+    [self.navigationController pushViewController:search animated:YES];
 }
 
 #pragma mark - Cache & Offline-Hinweis
@@ -131,42 +220,24 @@ static NSString * const kCacheKey = @"nearbyCache";
     NSTimeInterval age = self.dataTime ? -[self.dataTime timeIntervalSinceNow] : 0;
     if (self.offline && self.dataTime) {
         self.largeSubtitleColor = [BVGTheme red];
-        self.largeSubtitle = [NSString stringWithFormat:@"Offline · Daten von %@", [BVGAPI hhmm:self.dataTime]];
+        self.largeSubtitle = [NSString stringWithFormat:@"Offline · Daten von %@ Uhr", [BVGAPI hhmm:self.dataTime]];
     } else if (self.dataTime && age > 120) {
-        self.largeSubtitleColor = [BVGTheme orange];
-        self.largeSubtitle = [NSString stringWithFormat:@"Stand %@ · wird aktualisiert …", [BVGAPI hhmm:self.dataTime]];
+        self.largeSubtitleColor = [BVGTheme warningText];
+        self.largeSubtitle = [NSString stringWithFormat:@"Stand %@ Uhr · wird aktualisiert …", [BVGAPI hhmm:self.dataTime]];
     } else if (self.dataTime) {
         self.largeSubtitleColor = nil;
-        self.largeSubtitle = [NSString stringWithFormat:@"In deiner Nähe · Live %@", [BVGAPI hhmm:self.dataTime]];
+        self.largeSubtitle = [NSString stringWithFormat:@"In deiner Nähe · live, %@ Uhr", [BVGAPI hhmm:self.dataTime]];
     } else {
         self.largeSubtitleColor = nil;
         self.largeSubtitle = @"In deiner Nähe";
     }
 }
 
-// gelbes Banner unter dem Titel, wenn es an den Haltestellen Stoerungen gibt
 - (void)updateDisruptionBanner {
     NSInteger count = [DisruptionsViewController countInCollection:[DisruptionsViewController collectFromStops:self.stops]];
     if (count == self.bannerCount) return;
     self.bannerCount = count;
-    if (count == 0) { self.headerAccessory = nil; return; }
-
-    CGFloat w = self.view.bounds.size.width;
-    UIView *v = [[UIView alloc] initWithFrame:CGRectMake(0, 0, w, 52)];
-    UIButton *b = [UIButton buttonWithType:UIButtonTypeCustom];
-    b.frame = CGRectMake([BVGTheme cardInset], 4, w - 2 * [BVGTheme cardInset], 44);
-    b.autoresizingMask = UIViewAutoresizingFlexibleWidth;
-    b.backgroundColor = [BVGTheme accentSoft];
-    b.layer.cornerRadius = [BVGTheme cardRadius];
-    b.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeft;
-    b.contentEdgeInsets = UIEdgeInsetsMake(0, 14, 0, 14);
-    b.titleLabel.font = [BVGTheme font:15 weight:UIFontWeightSemibold];
-    [b setTitleColor:[UIColor colorWithRed:0.62 green:0.36 blue:0 alpha:1] forState:UIControlStateNormal];
-    [b setTitle:[NSString stringWithFormat:@"⚠︎  %ld %@ an deinen Haltestellen  ›", (long)count,
-                 count == 1 ? @"Hinweis" : @"Hinweise"] forState:UIControlStateNormal];
-    [b addTarget:self action:@selector(openDisruptions) forControlEvents:UIControlEventTouchUpInside];
-    [v addSubview:b];
-    self.headerAccessory = v;
+    [self buildHeaderAccessory];
 }
 
 - (void)openDisruptions {
@@ -197,10 +268,11 @@ static NSString * const kCacheKey = @"nearbyCache";
     [self announceStop:best];
 }
 
-- (void)announceFromHeader:(UILongPressGestureRecognizer *)press {
+// Haltestellen-Kopf gedrueckt halten -> Ansage fuer diese Haltestelle
+- (void)longPress:(UILongPressGestureRecognizer *)press {
     if (press.state != UIGestureRecognizerStateBegan) return;
-    NSInteger section = press.view.tag;
-    if (section < (NSInteger)self.stops.count) [self announceStop:self.stops[section]];
+    NSIndexPath *ip = [self.tableView indexPathForRowAtPoint:[press locationInView:self.tableView]];
+    if (ip && ip.row == 0 && ip.section < (NSInteger)self.stops.count) [self announceStop:self.stops[ip.section]];
 }
 
 - (BOOL)canBecomeFirstResponder {
@@ -234,12 +306,6 @@ static NSString * const kCacheKey = @"nearbyCache";
     if (sender.tag >= (NSInteger)self.stops.count) return;
     NSDictionary *stop = self.stops[sender.tag];
     [BVGAPI setFavorite:![stop[@"fav"] boolValue] stopId:stop[@"id"] name:stop[@"name"]];
-}
-
-- (void)openStopFromHeader:(UITapGestureRecognizer *)tap {
-    NSInteger section = tap.view.tag;
-    if (section >= (NSInteger)self.stops.count) return;
-    [self openStop:self.stops[section]];
 }
 
 - (void)openStop:(NSDictionary *)stop {
@@ -330,10 +396,10 @@ static NSString * const kCacheKey = @"nearbyCache";
             [self showEmptyIcon:@"📡" title:@"Keine Verbindung" text:@"Zum Wiederholen nach unten ziehen oder das iPhone schütteln."];
         } else if (hadLocation) {
             [self showEmptyIcon:@"🔍" title:@"Nichts in der Nähe"
-                           text:[NSString stringWithFormat:@"Keine Haltestellen im Umkreis von %ld m. Den Radius kannst du in den Einstellungen vergrößern.", (long)[BVGSettings radius]]];
+                           text:[NSString stringWithFormat:@"Keine Haltestellen im Umkreis von %ld m. Den Radius kannst du unter „Mehr“ vergrößern.", (long)[BVGSettings radius]]];
         } else {
             [self showEmptyIcon:@"📍" title:@"Kein Standort"
-                           text:@"Erlaube den Standortzugriff in den iOS-Einstellungen oder lege Favoriten über die Suche an."];
+                           text:@"Erlaube den Standortzugriff in den iOS-Einstellungen oder suche oben eine Haltestelle und merke sie dir mit ☆."];
         }
         [self finish];
         return;
@@ -382,8 +448,6 @@ static NSString * const kCacheKey = @"nearbyCache";
     dispatch_async(dispatch_get_main_queue(), ^{
         self.loading = NO;
         [self.refreshControl endRefreshing];
-        self.refreshControl.attributedTitle = [[NSAttributedString alloc]
-            initWithString:[NSString stringWithFormat:@"Stand %@", [BVGAPI hhmm:self.dataTime ?: [NSDate date]]]];
         [self updateStatusHeader];
     });
 }
@@ -404,13 +468,25 @@ static NSString * const kCacheKey = @"nearbyCache";
     return deps.count > max ? [deps subarrayWithRange:NSMakeRange(0, max)] : deps;
 }
 
+// Zeilen pro Karte: 0 = Haltestelle · 1..n = Abfahrten (oder Leer-Hinweis) · letzte = "Alle Abfahrten"
 - (NSDictionary *)departureAt:(NSIndexPath *)ip {
     NSArray *deps = [self departuresInSection:ip.section];
-    return ip.row < (NSInteger)deps.count ? deps[ip.row] : nil;
+    NSInteger i = ip.row - 1;
+    return (i >= 0 && i < (NSInteger)deps.count) ? deps[i] : nil;
+}
+
+- (BOOL)isHeaderRow:(NSIndexPath *)ip {
+    return ip.row == 0;
 }
 
 - (BOOL)isMoreRow:(NSIndexPath *)ip {
     return ip.row == [self tableView:self.tableView numberOfRowsInSection:ip.section] - 1;
+}
+
+// Luftlinie * 1,3 (Umwege) bei ca. 80 m/min Gehtempo, mindestens 1 min
+- (NSInteger)walkMinutesToStop:(NSDictionary *)stop {
+    double dist = [stop[@"distance"] doubleValue];
+    return MAX(1, (NSInteger)ceil(dist * 1.3 / 80.0));
 }
 
 #pragma mark - Table
@@ -420,69 +496,56 @@ static NSString * const kCacheKey = @"nearbyCache";
 }
 
 - (CGFloat)tableView:(UITableView *)tableView heightForHeaderInSection:(NSInteger)section {
-    return 62;
+    return section == 0 ? 4 : 12;
 }
 
 - (UIView *)tableView:(UITableView *)tableView viewForHeaderInSection:(NSInteger)section {
-    NSDictionary *s = self.stops[section];
-    CGFloat w = tableView.bounds.size.width;
-    CGFloat x = [BVGTheme cardInset] + 4;
-
-    UIView *v = [[UIView alloc] initWithFrame:CGRectMake(0, 0, w, 62)];
-    v.tag = section;
-    [v addGestureRecognizer:[[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(openStopFromHeader:)]];
-    [v addGestureRecognizer:[[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(announceFromHeader:)]];
-    v.isAccessibilityElement = YES;
-    v.accessibilityTraits = UIAccessibilityTraitHeader | UIAccessibilityTraitButton;
-    v.accessibilityLabel = s[@"name"];
-
-    UILabel *name = [[UILabel alloc] initWithFrame:CGRectMake(x, 16, w - x - 56, 25)];
-    name.autoresizingMask = UIViewAutoresizingFlexibleWidth;
-    name.font = [BVGTheme font:21 weight:UIFontWeightBold];
-    name.textColor = [BVGTheme textPrimary];
-    name.text = s[@"name"];
-    [v addSubview:name];
-
-    UILabel *meta = [[UILabel alloc] initWithFrame:CGRectMake(x, 41, w - x - 56, 16)];
-    meta.autoresizingMask = UIViewAutoresizingFlexibleWidth;
-    meta.font = [BVGTheme font:13 weight:UIFontWeightMedium];
-    meta.textColor = [BVGTheme textSecondary];
-    NSNumber *dist = s[@"distance"];
-    NSMutableArray *parts = [NSMutableArray array];
-    if ([s[@"fav"] boolValue]) [parts addObject:@"★ Favorit"];
-    NSString *dirFilter = [BVGSettings directionFilterForStop:s[@"id"]];
-    if (dirFilter) [parts addObject:[@"→ " stringByAppendingString:dirFilter]];
-    if (dist) [parts addObject:[NSString stringWithFormat:@"%@ m  ·  %ld min zu Fuß", dist, (long)[self walkMinutesToStop:s]]];
-    meta.text = [parts componentsJoinedByString:@"  ·  "];
-    [v addSubview:meta];
-
-    UIButton *star = [UIButton buttonWithType:UIButtonTypeCustom];
-    star.frame = CGRectMake(w - [BVGTheme cardInset] - 44, 14, 44, 44);
-    star.autoresizingMask = UIViewAutoresizingFlexibleLeftMargin;
-    star.titleLabel.font = [UIFont systemFontOfSize:24];
-    [star setTitle:([s[@"fav"] boolValue] ? @"★" : @"☆") forState:UIControlStateNormal];
-    [star setTitleColor:([s[@"fav"] boolValue] ? [BVGTheme orange] : [BVGTheme textTertiary]) forState:UIControlStateNormal];
-    star.accessibilityLabel = [s[@"fav"] boolValue] ? @"Favorit entfernen" : @"Als Favorit merken";
-    star.tag = section;
-    [star addTarget:self action:@selector(toggleFavorite:) forControlEvents:UIControlEventTouchUpInside];
-    [v addSubview:star];
-    return v;
+    return [[UIView alloc] initWithFrame:CGRectZero];
 }
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
-    return MAX([self departuresInSection:section].count, 1) + 1;   // + "Alle Abfahrten"
+    return 1 + MAX([self departuresInSection:section].count, 1) + 1;
 }
 
 - (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath {
-    return [self isMoreRow:indexPath] ? 44 : [DepartureCell height];
+    if ([self isHeaderRow:indexPath]) return 48;
+    if ([self isMoreRow:indexPath]) return 40;
+    return [DepartureCell height];
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
+    NSDictionary *stop = self.stops[indexPath.section];
+
+    if ([self isHeaderRow:indexPath]) {
+        StopHeaderCell *cell = [tableView dequeueReusableCellWithIdentifier:@"stop"];
+        if (!cell) {
+            cell = [[StopHeaderCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:@"stop"];
+            [cell.starButton addTarget:self action:@selector(toggleFavorite:) forControlEvents:UIControlEventTouchUpInside];
+        }
+        BOOL fav = [stop[@"fav"] boolValue];
+        cell.nameLabel.text = [BVGAPI shortName:stop[@"name"]];
+        NSMutableArray *parts = [NSMutableArray array];
+        if (stop[@"distance"]) [parts addObject:[NSString stringWithFormat:@"%@ m · %ld min zu Fuß",
+                                                 stop[@"distance"], (long)[self walkMinutesToStop:stop]]];
+        else if (fav) [parts addObject:@"Favorit"];
+        NSString *dirFilter = [BVGSettings directionFilterForStop:stop[@"id"]];
+        if (dirFilter) [parts addObject:[@"nur → " stringByAppendingString:dirFilter]];
+        cell.metaLabel.text = [parts componentsJoinedByString:@" · "];
+        cell.starButton.tag = indexPath.section;
+        [cell.starButton setTitle:(fav ? @"★" : @"☆") forState:UIControlStateNormal];
+        [cell.starButton setTitleColor:(fav ? [BVGTheme orange] : [BVGTheme textTertiary]) forState:UIControlStateNormal];
+        cell.starButton.accessibilityLabel = fav ? @"Favorit entfernen" : @"Als Favorit merken";
+        cell.accessibilityLabel = stop[@"name"];
+        cell.accessibilityHint = @"Doppeltippen für alle Abfahrten";
+        cell.accessibilityTraits = UIAccessibilityTraitHeader | UIAccessibilityTraitButton;
+        return cell;
+    }
+
     if ([self isMoreRow:indexPath]) {
         CardCell *cell = [tableView dequeueReusableCellWithIdentifier:@"more"];
         if (!cell) cell = [[CardCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:@"more"];
-        cell.textLabel.text = @"Alle Abfahrten & Hinweise";
-        cell.textLabel.font = [BVGTheme font:15 weight:UIFontWeightMedium];
+        cell.textLabel.text = @"Alle Abfahrten";
+        cell.textLabel.font = [BVGTheme font:14 weight:UIFontWeightRegular];
         cell.textLabel.textColor = [BVGTheme link];
         cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
         return cell;
@@ -494,7 +557,6 @@ static NSString * const kCacheKey = @"nearbyCache";
     if (d) {
         [cell configureWithDeparture:d];
         // zu Fuss nicht mehr erreichbar? -> ausgrauen
-        NSDictionary *stop = self.stops[indexPath.section];
         NSDate *when = [BVGAPI whenOfDeparture:d];
         BOOL tooLate = stop[@"distance"] && when &&
                        [when timeIntervalSinceNow] / 60.0 < [self walkMinutesToStop:stop];
@@ -505,16 +567,11 @@ static NSString * const kCacheKey = @"nearbyCache";
     return cell;
 }
 
-// Luftlinie * 1,3 (Umwege) bei ca. 80 m/min Gehtempo, mindestens 1 min
-- (NSInteger)walkMinutesToStop:(NSDictionary *)stop {
-    double dist = [stop[@"distance"] doubleValue];
-    return MAX(1, (NSInteger)ceil(dist * 1.3 / 80.0));
-}
-
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
     [tableView deselectRowAtIndexPath:indexPath animated:YES];
+    if (indexPath.section >= (NSInteger)self.stops.count) return;
 
-    if ([self isMoreRow:indexPath]) {
+    if ([self isHeaderRow:indexPath] || [self isMoreRow:indexPath]) {
         [self openStop:self.stops[indexPath.section]];
         return;
     }
@@ -532,7 +589,7 @@ static NSString * const kCacheKey = @"nearbyCache";
 #pragma mark - Wischen → Wecker
 
 - (BOOL)tableView:(UITableView *)tableView canEditRowAtIndexPath:(NSIndexPath *)indexPath {
-    if ([self isMoreRow:indexPath]) return NO;
+    if ([self isHeaderRow:indexPath] || [self isMoreRow:indexPath]) return NO;
     NSDictionary *d = [self departureAt:indexPath];
     return d && NN(d[@"tripId"]) && ![NN(d[@"cancelled"]) boolValue];
 }

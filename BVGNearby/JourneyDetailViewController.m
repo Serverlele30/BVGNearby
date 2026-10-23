@@ -46,14 +46,14 @@
     CGFloat w = self.view.bounds.size.width;
     UIView *footer = [[UIView alloc] initWithFrame:CGRectMake(0, 0, w, 96)];
     UIButton *start = [UIButton buttonWithType:UIButtonTypeCustom];
-    start.frame = CGRectMake([BVGTheme cardInset], 20, w - 2 * [BVGTheme cardInset], 54);
+    start.frame = CGRectMake([BVGTheme cardInset], 16, w - 2 * [BVGTheme cardInset], 46);
     start.autoresizingMask = UIViewAutoresizingFlexibleWidth;
-    start.backgroundColor = [BVGTheme accent];
-    start.layer.cornerRadius = 14;
-    start.titleLabel.font = [BVGTheme font:18 weight:UIFontWeightSemibold];
+    start.backgroundColor = [BVGTheme textPrimary];
+    start.layer.cornerRadius = [BVGTheme cardRadius];
+    start.titleLabel.font = [BVGTheme font:16 weight:UIFontWeightSemibold];
     [start setTitle:@"Navigation starten" forState:UIControlStateNormal];
-    [start setTitleColor:[BVGTheme textPrimary] forState:UIControlStateNormal];
-    [start setTitleColor:[BVGTheme textSecondary] forState:UIControlStateHighlighted];
+    [start setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
+    [start setTitleColor:[BVGTheme textTertiary] forState:UIControlStateHighlighted];
     [start addTarget:self action:@selector(startGuidance) forControlEvents:UIControlEventTouchUpInside];
     [footer addSubview:start];
     self.tableView.tableFooterView = footer;
@@ -128,7 +128,7 @@
         NSNumber *dist = NN(leg[@"distance"]);
         cell.textLabel.text = [NSString stringWithFormat:@"🚶  %ld min zu Fuß%@", (long)mins,
                                dist ? [NSString stringWithFormat:@" · %@ m", dist] : @""];
-        cell.textLabel.font = [BVGTheme font:15 weight:UIFontWeightMedium];
+        cell.textLabel.font = [BVGTheme font:14 weight:UIFontWeightMedium];
         cell.textLabel.textColor = [BVGTheme textSecondary];
         cell.cardColor = [BVGTheme background];
         return cell;
@@ -136,8 +136,8 @@
 
     if (indexPath.row == 0) {
         cell.imageView.image = [BVGAPI badgeForLine:leg[@"line"]];
-        cell.textLabel.text = NN(leg[@"direction"]) ?: @"";
-        cell.textLabel.font = [BVGTheme font:17 weight:UIFontWeightSemibold];
+        cell.textLabel.text = [@"→ " stringByAppendingString:[BVGAPI shortName:NN(leg[@"direction"])] ?: @""];
+        cell.textLabel.font = [BVGTheme font:15 weight:UIFontWeightSemibold];
         cell.detailTextLabel.text = [NN(leg[@"cancelled"]) boolValue] ? @"Fällt aus" : @"Fahrtverlauf ansehen";
         cell.detailTextLabel.textColor = [NN(leg[@"cancelled"]) boolValue] ? [BVGTheme red] : [BVGTheme link];
         cell.detailTextLabel.font = [BVGTheme font:13 weight:UIFontWeightMedium];
@@ -152,13 +152,13 @@
     NSDictionary *place = NN(leg[isDep ? @"origin" : @"destination"]);
     NSDate *t = isDep ? [JourneyDetailViewController dep:leg] : [JourneyDetailViewController arr:leg];
     NSInteger delay = [NN(leg[isDep ? @"departureDelay" : @"arrivalDelay"]) integerValue] / 60;
-    NSString *platform = NN(leg[isDep ? @"departurePlatform" : @"arrivalPlatform"]);
+    NSString *platform = [BVGAPI platform:NN(leg[isDep ? @"departurePlatform" : @"arrivalPlatform"])];
 
     NSMutableAttributedString *title = [[NSMutableAttributedString alloc] initWithString:[BVGAPI hhmm:t]
-        attributes:@{ NSFontAttributeName: [BVGTheme digits:17 weight:UIFontWeightSemibold],
+        attributes:@{ NSFontAttributeName: [BVGTheme digits:15 weight:UIFontWeightSemibold],
                       NSForegroundColorAttributeName: delay > 0 ? [BVGTheme red] : [BVGTheme textPrimary] }];
-    [title appendAttributedString:[[NSAttributedString alloc] initWithString:[@"   " stringByAppendingString:NN(place[@"name"]) ?: @"?"]
-        attributes:@{ NSFontAttributeName: [BVGTheme font:16 weight:UIFontWeightRegular],
+    [title appendAttributedString:[[NSAttributedString alloc] initWithString:[@"   " stringByAppendingString:[BVGAPI shortName:NN(place[@"name"])] ?: @"?"]
+        attributes:@{ NSFontAttributeName: [BVGTheme font:15 weight:UIFontWeightRegular],
                       NSForegroundColorAttributeName: [BVGTheme textPrimary] }]];
     cell.textLabel.attributedText = title;
 

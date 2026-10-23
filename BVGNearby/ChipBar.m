@@ -21,10 +21,10 @@
         for (NSUInteger i = 0; i < titles.count; i++) {
             UIButton *b = [UIButton buttonWithType:UIButtonTypeCustom];
             [b setTitle:titles[i] forState:UIControlStateNormal];
-            b.titleLabel.font = [BVGTheme font:15 weight:UIFontWeightSemibold];
-            CGFloat w = ceil([titles[i] sizeWithAttributes:@{ NSFontAttributeName: b.titleLabel.font }].width) + 28;
-            b.frame = CGRectMake(x, 6, w, 32);
-            b.layer.cornerRadius = 16;
+            b.titleLabel.font = [BVGTheme font:14 weight:UIFontWeightMedium];
+            CGFloat w = ceil([titles[i] sizeWithAttributes:@{ NSFontAttributeName: b.titleLabel.font }].width) + 24;
+            b.frame = CGRectMake(x, 7, w, 30);
+            b.layer.cornerRadius = 15;
             b.tag = i;
             [b addTarget:self action:@selector(tapped:) forControlEvents:UIControlEventTouchUpInside];
             [_scroll addSubview:b];

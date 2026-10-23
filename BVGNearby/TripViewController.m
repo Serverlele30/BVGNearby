@@ -57,7 +57,7 @@
         [self.contentView addSubview:_noteLabel];
         _timeLabel = [[UILabel alloc] init];
         _timeLabel.textAlignment = NSTextAlignmentRight;
-        _timeLabel.font = [BVGTheme digits:15 weight:UIFontWeightMedium];
+        _timeLabel.font = [BVGTheme digits:14 weight:UIFontWeightMedium];
         [self.contentView addSubview:_timeLabel];
     }
     return self;
@@ -121,7 +121,7 @@
     [header addSubview:badge];
 
     UILabel *dir = [[UILabel alloc] initWithFrame:CGRectMake(x, 40, w - 2 * x, 34)];
-    dir.font = [BVGTheme font:26 weight:UIFontWeightBold];
+    dir.font = [BVGTheme font:22 weight:UIFontWeightBold];
     dir.textColor = [BVGTheme textPrimary];
     dir.adjustsFontSizeToFitWidth = YES;
     dir.minimumScaleFactor = 0.6;
@@ -226,7 +226,7 @@
     [cell.timeline setNeedsDisplay];
 
     cell.nameLabel.text = name;
-    cell.nameLabel.font = (current || mine) ? [BVGTheme font:16 weight:UIFontWeightSemibold] : [BVGTheme font:16 weight:UIFontWeightRegular];
+    cell.nameLabel.font = (current || mine) ? [BVGTheme font:15 weight:UIFontWeightSemibold] : [BVGTheme font:15 weight:UIFontWeightRegular];
     cell.nameLabel.textColor = past ? [BVGTheme textTertiary] : [BVGTheme textPrimary];
 
     if (cancelled)    { cell.noteLabel.text = @"Halt entfällt"; cell.noteLabel.textColor = [BVGTheme red]; }

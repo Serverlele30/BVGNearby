@@ -23,12 +23,14 @@
     self = [super initWithStyle:UITableViewCellStyleDefault reuseIdentifier:reuseIdentifier];
     if (self) {
         _timeLabel = [[UILabel alloc] init];
-        _timeLabel.font = [BVGTheme digits:20 weight:UIFontWeightSemibold];
+        _timeLabel.font = [BVGTheme digits:17 weight:UIFontWeightSemibold];
         _timeLabel.textColor = [BVGTheme textPrimary];
+        _timeLabel.adjustsFontSizeToFitWidth = YES;
+        _timeLabel.minimumScaleFactor = 0.8;
         [self.contentView addSubview:_timeLabel];
 
         _durationLabel = [[UILabel alloc] init];
-        _durationLabel.font = [BVGTheme digits:15 weight:UIFontWeightSemibold];
+        _durationLabel.font = [BVGTheme digits:14 weight:UIFontWeightMedium];
         _durationLabel.textColor = [BVGTheme textSecondary];
         _durationLabel.textAlignment = NSTextAlignmentRight;
         [self.contentView addSubview:_durationLabel];
@@ -38,7 +40,7 @@
         [self.contentView addSubview:_linesView];
 
         _infoLabel = [[UILabel alloc] init];
-        _infoLabel.font = [BVGTheme font:13 weight:UIFontWeightRegular];
+        _infoLabel.font = [BVGTheme font:12 weight:UIFontWeightRegular];
         _infoLabel.textColor = [BVGTheme textSecondary];
         [self.contentView addSubview:_infoLabel];
 
@@ -50,18 +52,25 @@
 - (void)layoutSubviews {
     [super layoutSubviews];
     CGFloat w = self.contentView.bounds.size.width;
-    self.timeLabel.frame     = CGRectMake(16, 10, w - 110, 24);
-    self.durationLabel.frame = CGRectMake(w - 96, 10, 84, 24);
-    self.linesView.frame     = CGRectMake(16, 38, w - 28, 24);
-    self.infoLabel.frame     = CGRectMake(16, 66, w - 28, 17);
+    self.timeLabel.frame     = CGRectMake(14, 9, w - 110, 21);
+    self.durationLabel.frame = CGRectMake(w - 92, 10, 84, 19);
+    self.linesView.frame     = CGRectMake(14, 34, w - 22, 22);
+    self.infoLabel.frame     = CGRectMake(14, 60, w - 22, 15);
 }
 
 @end
 
 #pragma mark - Routenplaner
 
+typedef NS_ENUM(NSInteger, JourneySection) {
+    JourneySectionDate,      // Datumsauswahl (nur bei "Abfahrt um" / "Ankunft um")
+    JourneySectionSearch,    // Suchen-Knopf + Statuszeile
+    JourneySectionQuick,     // Schnellziele (wenn noch keine Ergebnisse)
+    JourneySectionResult,    // je eine Karte pro Verbindung
+};
+
 @interface JourneyViewController () <CLLocationManagerDelegate>
-@property (nonatomic, strong) NSDictionary *from;      // nil = Mein Standort, sonst {id, name}
+@property (nonatomic, strong) NSDictionary *from;      // nil = Mein Standort, sonst {id, name} oder {name, latitude, longitude}
 @property (nonatomic, strong) NSDictionary *to;
 @property (nonatomic, strong) ChipBar *timeControl;   // Jetzt / Abfahrt um / Ankunft um
 @property (nonatomic, strong) UIDatePicker *datePicker;
@@ -79,13 +88,11 @@
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-    self.largeTitle = @"Route";
-    self.largeSubtitle = [NSString stringWithFormat:@"Umstiege mit mind. %ld min Puffer", (long)[BVGSettings transferMinutes]];
+    self.largeTitle = @"Verbindung";
     self.journeys = @[];
 
     __weak JourneyViewController *weakSelf = self;
     self.timeControl = [[ChipBar alloc] initWithItems:@[@"Jetzt", @"Abfahrt um", @"Ankunft um"]];
-    self.timeControl.idleColor = [BVGTheme background];
     self.timeControl.onChange = ^(NSInteger idx) { [weakSelf timeModeChanged]; };
 
     self.datePicker = [[UIDatePicker alloc] init];
@@ -94,102 +101,108 @@
     self.datePicker.minuteInterval = 1;
     self.datePicker.date = [NSDate dateWithTimeIntervalSinceNow:15 * 60];
 
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(updateNaviButton)
-                                                 name:GuidanceChangedNotification object:nil];
+    [self buildHeader];
+
+    NSNotificationCenter *nc = [NSNotificationCenter defaultCenter];
+    [nc addObserver:self selector:@selector(updateNaviButton) name:GuidanceChangedNotification object:nil];
+    [nc addObserver:self selector:@selector(settingsChanged) name:BVGSettingsChangedNotification object:nil];
     [self updateNaviButton];
-    [self buildQuickPlaces];
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(settingsChanged)
-                                                 name:BVGSettingsChangedNotification object:nil];
 
     self.locationManager = [[CLLocationManager alloc] init];
     self.locationManager.delegate = self;
     self.locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters;
-
-    self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:@"⇅"
-                                                                             style:UIBarButtonItemStylePlain
-                                                                            target:self action:@selector(swap)];
-}
-
-#pragma mark - Schnellziele
-
-- (void)settingsChanged {
-    self.largeSubtitle = [NSString stringWithFormat:@"Umstiege mit mind. %ld min Puffer", (long)[BVGSettings transferMinutes]];
-    [self buildQuickPlaces];
-}
-
-- (void)buildQuickPlaces {
-    CGFloat w = self.view.bounds.size.width;
-    CGFloat inset = [BVGTheme cardInset];
-    CGFloat bw = (w - 2 * inset - 10) / 2;
-    UIView *v = [[UIView alloc] initWithFrame:CGRectMake(0, 0, w, 74)];
-
-    NSArray *defs = @[@[@"home", @"🏠", @"Nach Hause"], @[@"work", @"💼", @"Zur Arbeit"]];
-    for (NSUInteger i = 0; i < defs.count; i++) {
-        NSDictionary *place = [BVGSettings placeForKey:defs[i][0]];
-        UIButton *b = [UIButton buttonWithType:UIButtonTypeCustom];
-        b.frame = CGRectMake(inset + i * (bw + 10), 4, bw, 64);
-        b.autoresizingMask = i == 0 ? UIViewAutoresizingFlexibleRightMargin : UIViewAutoresizingFlexibleLeftMargin;
-        b.backgroundColor = [BVGTheme card];
-        b.layer.cornerRadius = [BVGTheme cardRadius];
-        b.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeft;
-        b.contentEdgeInsets = UIEdgeInsetsMake(0, 14, 0, 10);
-        b.titleLabel.numberOfLines = 2;
-        b.titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
-        b.tag = i;
-
-        NSMutableAttributedString *t = [[NSMutableAttributedString alloc]
-            initWithString:[NSString stringWithFormat:@"%@ %@\n", defs[i][1], defs[i][2]]
-                attributes:@{ NSFontAttributeName: [BVGTheme font:16 weight:UIFontWeightSemibold],
-                              NSForegroundColorAttributeName: [BVGTheme textPrimary] }];
-        [t appendAttributedString:[[NSAttributedString alloc] initWithString:(place ? place[@"name"] : @"Festlegen …")
-            attributes:@{ NSFontAttributeName: [BVGTheme font:13 weight:UIFontWeightRegular],
-                          NSForegroundColorAttributeName: place ? [BVGTheme textSecondary] : [BVGTheme link] }]];
-        [b setAttributedTitle:t forState:UIControlStateNormal];
-        [b addTarget:self action:@selector(quickPlaceTapped:) forControlEvents:UIControlEventTouchUpInside];
-        [b addGestureRecognizer:[[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(quickPlaceLongPress:)]];
-        b.accessibilityHint = @"Gedrückt halten zum Ändern";
-        [v addSubview:b];
-    }
-    self.headerAccessory = v;
-}
-
-- (NSString *)quickKey:(NSInteger)idx {
-    return idx == 0 ? @"home" : @"work";
-}
-
-- (void)quickPlaceTapped:(UIButton *)b {
-    NSDictionary *place = [BVGSettings placeForKey:[self quickKey:b.tag]];
-    if (!place) { [self editQuickPlace:b.tag]; return; }
-    self.from = nil;           // ab meinem Standort
-    self.to = place;
-    self.timeControl.selectedIndex = 0;
-    [self.tableView reloadData];
-    [self startSearch];
-}
-
-- (void)quickPlaceLongPress:(UILongPressGestureRecognizer *)g {
-    if (g.state == UIGestureRecognizerStateBegan) [self editQuickPlace:g.view.tag];
-}
-
-- (void)editQuickPlace:(NSInteger)idx {
-    NSString *key = [self quickKey:idx];
-    __weak JourneyViewController *weakSelf = self;
-    SearchViewController *search = [[SearchViewController alloc] initWithStyle:UITableViewStylePlain];
-    search.allowAddresses = YES;
-    search.pickHandler = ^(NSDictionary *place) {
-        [BVGSettings setPlace:place forKey:key];
-        [weakSelf buildQuickPlaces];
-    };
-    [self.navigationController pushViewController:search animated:YES];
 }
 
 - (void)dealloc {
     [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
+- (void)settingsChanged {
+    [self.tableView reloadData];
+}
+
+#pragma mark - Kopfbereich: Von / Nach + Zeit
+
+- (UIButton *)endpointButton:(BOOL)isFrom frame:(CGRect)frame {
+    UIButton *b = [UIButton buttonWithType:UIButtonTypeCustom];
+    b.frame = frame;
+    b.autoresizingMask = UIViewAutoresizingFlexibleWidth;
+    b.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeft;
+    b.contentEdgeInsets = UIEdgeInsetsMake(0, 12, 0, 8);
+    [b setBackgroundImage:[BVGTheme imageWithColor:[BVGTheme cardPressed]] forState:UIControlStateHighlighted];
+    b.titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+
+    NSString *label = isFrom ? @"Von  " : @"Nach  ";
+    NSString *value;
+    BOOL placeholder = NO;
+    if (isFrom) value = self.from ? [BVGAPI shortName:self.from[@"name"]] : @"Mein Standort";
+    else if (self.to) value = [BVGAPI shortName:self.to[@"name"]];
+    else { value = @"Ziel eingeben"; placeholder = YES; }
+
+    NSMutableAttributedString *t = [[NSMutableAttributedString alloc] initWithString:label attributes:@{
+        NSFontAttributeName: [BVGTheme font:13 weight:UIFontWeightRegular],
+        NSForegroundColorAttributeName: [BVGTheme textSecondary] }];
+    [t appendAttributedString:[[NSAttributedString alloc] initWithString:value ?: @"" attributes:@{
+        NSFontAttributeName: [BVGTheme font:15 weight:(placeholder ? UIFontWeightRegular : UIFontWeightSemibold)],
+        NSForegroundColorAttributeName: placeholder ? [BVGTheme textTertiary] : [BVGTheme textPrimary] }]];
+    [b setAttributedTitle:t forState:UIControlStateNormal];
+    b.accessibilityLabel = [NSString stringWithFormat:@"%@ %@", isFrom ? @"Start" : @"Ziel", value];
+    b.tag = isFrom ? 0 : 1;
+    [b addTarget:self action:@selector(endpointTapped:) forControlEvents:UIControlEventTouchUpInside];
+    return b;
+}
+
+- (void)buildHeader {
+    CGFloat w = self.view.bounds.size.width;
+    CGFloat inset = [BVGTheme cardInset];
+    CGFloat cardW = w - 2 * inset;
+    CGFloat rowH = 42;
+    UIView *v = [[UIView alloc] initWithFrame:CGRectMake(0, 0, w, 2 * rowH + 46)];
+
+    // weisse Karte mit zwei Zeilen und Tausch-Knopf rechts
+    UIView *card = [[UIView alloc] initWithFrame:CGRectMake(inset, 0, cardW, 2 * rowH)];
+    card.autoresizingMask = UIViewAutoresizingFlexibleWidth;
+    card.backgroundColor = [UIColor whiteColor];
+    card.layer.cornerRadius = [BVGTheme cardRadius];
+    card.clipsToBounds = YES;
+    [v addSubview:card];
+
+    [card addSubview:[self endpointButton:YES frame:CGRectMake(0, 0, cardW - 46, rowH)]];
+    [card addSubview:[self endpointButton:NO frame:CGRectMake(0, rowH, cardW - 46, rowH)]];
+
+    UIView *line = [[UIView alloc] initWithFrame:CGRectMake(12, rowH, cardW - 58, 1.0 / [UIScreen mainScreen].scale)];
+    line.backgroundColor = [BVGTheme separator];
+    line.autoresizingMask = UIViewAutoresizingFlexibleWidth;
+    [card addSubview:line];
+
+    UIButton *swap = [UIButton buttonWithType:UIButtonTypeCustom];
+    swap.frame = CGRectMake(cardW - 42, rowH - 16, 32, 32);
+    swap.autoresizingMask = UIViewAutoresizingFlexibleLeftMargin;
+    [swap setBackgroundImage:[BVGTheme roundedImageWithColor:[BVGTheme background] radius:16] forState:UIControlStateNormal];
+    [swap setBackgroundImage:[BVGTheme roundedImageWithColor:[BVGTheme cardPressed] radius:16] forState:UIControlStateHighlighted];
+    swap.titleLabel.font = [BVGTheme font:16 weight:UIFontWeightSemibold];
+    [swap setTitle:@"⇅" forState:UIControlStateNormal];
+    [swap setTitleColor:[BVGTheme textPrimary] forState:UIControlStateNormal];
+    swap.accessibilityLabel = @"Start und Ziel tauschen";
+    [swap addTarget:self action:@selector(swap) forControlEvents:UIControlEventTouchUpInside];
+    [card addSubview:swap];
+
+    // Zeit-Chips darunter
+    [self.timeControl removeFromSuperview];
+    self.timeControl.frame = CGRectMake(0, 2 * rowH + 2, w, 44);
+    self.timeControl.autoresizingMask = UIViewAutoresizingFlexibleWidth;
+    [v addSubview:self.timeControl];
+
+    self.headerAccessory = v;
+}
+
+- (void)endpointTapped:(UIButton *)b {
+    [self chooseEndpoint:(b.tag == 0)];
+}
+
 - (void)updateNaviButton {
     self.navigationItem.rightBarButtonItem = [GuidanceManager shared].active
-        ? [[UIBarButtonItem alloc] initWithTitle:@"Navigation" style:UIBarButtonItemStyleDone target:self action:@selector(openGuidance)]
+        ? [[UIBarButtonItem alloc] initWithTitle:@"Navigation ›" style:UIBarButtonItemStyleDone target:self action:@selector(openGuidance)]
         : nil;
 }
 
@@ -202,62 +215,81 @@
     if (self.timeControl.selectedIndex > 0 && [self.datePicker.date timeIntervalSinceNow] < -3600) {
         self.datePicker.date = [NSDate dateWithTimeIntervalSinceNow:15 * 60];
     }
-    [self.tableView reloadSections:[NSIndexSet indexSetWithIndex:1] withRowAnimation:UITableViewRowAnimationFade];
+    [self.tableView reloadData];
 }
 
 - (void)swap {
     if (!self.to) return;
     NSDictionary *oldFrom = self.from;
     self.from = self.to;
-    self.to = oldFrom;   // nil (Mein Standort) als Ziel ist nicht erlaubt -> unten abgefangen
+    self.to = oldFrom;   // nil (Mein Standort) als Ziel ist nicht erlaubt
     if (!self.to) {
         self.to = self.from;
         self.from = nil;
     }
     self.journeys = @[];
+    self.errorText = nil;
+    [self buildHeader];
     [self.tableView reloadData];
 }
 
-#pragma mark - Auswahl
+#pragma mark - Auswahl von Start/Ziel: direkt die Suche mit Schnellauswahl
 
 - (void)chooseEndpoint:(BOOL)isFrom {
-    UIAlertController *sheet = [UIAlertController alertControllerWithTitle:(isFrom ? @"Start" : @"Ziel")
-                                                                   message:nil
-                                                            preferredStyle:UIAlertControllerStyleActionSheet];
     __weak JourneyViewController *weakSelf = self;
-    if (isFrom) {
-        [sheet addAction:[UIAlertAction actionWithTitle:@"📍 Mein Standort" style:UIAlertActionStyleDefault
-                                                handler:^(UIAlertAction *a) { weakSelf.from = nil; [weakSelf.tableView reloadData]; }]];
-    }
-    for (NSArray *pl in @[@[@"home", @"🏠 "], @[@"work", @"💼 "]]) {
-        NSDictionary *place = [BVGSettings placeForKey:pl[0]];
-        if (!place) continue;
-        [sheet addAction:[UIAlertAction actionWithTitle:[pl[1] stringByAppendingString:place[@"name"]] style:UIAlertActionStyleDefault
-                                                handler:^(UIAlertAction *a) { [weakSelf setEndpoint:place isFrom:isFrom]; }]];
-    }
-    NSInteger n = 0;
-    for (NSDictionary *f in [BVGAPI favorites]) {
-        if (n++ >= 4) break;
-        [sheet addAction:[UIAlertAction actionWithTitle:[@"★ " stringByAppendingString:f[@"name"]] style:UIAlertActionStyleDefault
-                                                handler:^(UIAlertAction *a) { [weakSelf setEndpoint:f isFrom:isFrom]; }]];
-    }
-    [sheet addAction:[UIAlertAction actionWithTitle:@"🔍 Haltestelle oder Adresse suchen …" style:UIAlertActionStyleDefault
-                                            handler:^(UIAlertAction *a) {
-        SearchViewController *search = [[SearchViewController alloc] initWithStyle:UITableViewStylePlain];
-        search.allowAddresses = YES;
-        search.pickHandler = ^(NSDictionary *stop) { [weakSelf setEndpoint:stop isFrom:isFrom]; };
-        [weakSelf.navigationController pushViewController:search animated:YES];
-    }]];
-    [sheet addAction:[UIAlertAction actionWithTitle:@"Abbrechen" style:UIAlertActionStyleCancel handler:nil]];
-    sheet.popoverPresentationController.sourceView = self.view;
-    [self presentViewController:sheet animated:YES completion:nil];
+    SearchViewController *search = [[SearchViewController alloc] initWithStyle:UITableViewStylePlain];
+    search.allowAddresses = YES;
+    search.offerSavedPlaces = YES;
+    search.offerCurrentLocation = isFrom;
+    search.pickTitle = isFrom ? @"Start" : @"Ziel";
+    search.pickHandler = ^(NSDictionary *place) {
+        if (!isFrom && !place) return;   // "Mein Standort" nur als Start
+        [weakSelf setEndpoint:place isFrom:isFrom];
+    };
+    [self.navigationController pushViewController:search animated:YES];
 }
 
-- (void)setEndpoint:(NSDictionary *)stop isFrom:(BOOL)isFrom {
-    if (isFrom) self.from = stop; else self.to = stop;
+- (void)setEndpoint:(NSDictionary *)place isFrom:(BOOL)isFrom {
+    if (isFrom) self.from = place; else self.to = place;
     self.journeys = @[];
     self.errorText = nil;
+    [self buildHeader];
     [self.tableView reloadData];
+    if (self.to) [self startSearch];   // Ziel steht -> gleich suchen (wie in der BVG-App)
+}
+
+#pragma mark - Schnellziele
+
+- (NSString *)quickKey:(NSInteger)idx {
+    return idx == 0 ? @"home" : @"work";
+}
+
+- (void)quickPlaceTapped:(NSInteger)idx {
+    NSDictionary *place = [BVGSettings placeForKey:[self quickKey:idx]];
+    if (!place) { [self editQuickPlace:idx]; return; }
+    self.from = nil;           // ab meinem Standort
+    self.timeControl.selectedIndex = 0;
+    [self setEndpoint:place isFrom:NO];
+}
+
+- (void)editQuickPlace:(NSInteger)idx {
+    NSString *key = [self quickKey:idx];
+    __weak JourneyViewController *weakSelf = self;
+    SearchViewController *search = [[SearchViewController alloc] initWithStyle:UITableViewStylePlain];
+    search.allowAddresses = YES;
+    search.pickTitle = idx == 0 ? @"Zuhause festlegen" : @"Arbeit festlegen";
+    search.pickHandler = ^(NSDictionary *place) {
+        if (!place) return;
+        [BVGSettings setPlace:place forKey:key];
+        [weakSelf.tableView reloadData];
+    };
+    [self.navigationController pushViewController:search animated:YES];
+}
+
+- (void)quickLongPress:(UILongPressGestureRecognizer *)g {
+    if (g.state != UIGestureRecognizerStateBegan) return;
+    NSIndexPath *ip = [self.tableView indexPathForRowAtPoint:[g locationInView:self.tableView]];
+    if (ip && [self kindOfSection:ip.section] == JourneySectionQuick) [self editQuickPlace:ip.row];
 }
 
 #pragma mark - Suche
@@ -298,7 +330,7 @@
 - (void)locationManager:(CLLocationManager *)manager didFailWithError:(NSError *)error {
     if (!self.searching) return;
     self.searching = NO;
-    self.errorText = @"Standort nicht verfügbar. Wähle eine Start-Haltestelle.";
+    self.errorText = @"Standort nicht verfügbar. Tippe auf „Von“ und wähle eine Haltestelle.";
     [self.tableView reloadData];
 }
 
@@ -321,7 +353,7 @@
                 NSLog(@"Journey-Fehler: %@ %@", error, json);
                 self.errorText = @"Keine Verbindung gefunden oder Server nicht erreichbar.";
             }
-            // Sicherheitsnetz: nur Verbindungen mit mind. 5 min pro Umstieg zeigen
+            // Sicherheitsnetz: nur Verbindungen mit mind. X min pro Umstieg zeigen
             NSMutableArray *ok = [NSMutableArray array];
             for (NSDictionary *j in list ?: @[]) {
                 id legs = NN(j[@"legs"]);
@@ -336,20 +368,12 @@
 
 #pragma mark - Auswertung einer Verbindung
 
-+ (NSDate *)legDeparture:(NSDictionary *)leg {
-    return [BVGAPI dateFromISO:leg[@"departure"]] ?: [BVGAPI dateFromISO:leg[@"plannedDeparture"]];
-}
-
-+ (NSDate *)legArrival:(NSDictionary *)leg {
-    return [BVGAPI dateFromISO:leg[@"arrival"]] ?: [BVGAPI dateFromISO:leg[@"plannedArrival"]];
-}
-
 - (void)configureCell:(JourneyCell *)cell journey:(NSDictionary *)j {
     NSArray *legs = NN(j[@"legs"]);
     if (![legs isKindOfClass:[NSArray class]] || !legs.count) return;
 
-    NSDate *dep = [JourneyViewController legDeparture:legs.firstObject];
-    NSDate *arr = [JourneyViewController legArrival:legs.lastObject];
+    NSDate *dep = [GuidanceManager legDeparture:legs.firstObject];
+    NSDate *arr = [GuidanceManager legArrival:legs.lastObject];
     NSInteger mins = (dep && arr) ? (NSInteger)round([arr timeIntervalSinceDate:dep] / 60.0) : 0;
 
     NSMutableArray *lines = [NSMutableArray array];
@@ -363,130 +387,165 @@
         [lines addObject:leg[@"line"]];
         if (firstDelay < 0) {
             firstDelay = [NN(leg[@"departureDelay"]) integerValue] / 60;
-            firstStop = NN(NN(leg[@"origin"])[@"name"]);
-            firstTransitDep = [JourneyViewController legDeparture:leg];
+            firstStop = [BVGAPI shortName:NN(NN(leg[@"origin"])[@"name"])];
+            firstTransitDep = [GuidanceManager legDeparture:leg];
         }
     }
 
-    cell.timeLabel.text = [NSString stringWithFormat:@"%@  →  %@", [BVGAPI hhmm:dep], [BVGAPI hhmm:arr]];
-    cell.durationLabel.text = [NSString stringWithFormat:@"%ld min", (long)mins];
+    cell.timeLabel.text = [NSString stringWithFormat:@"%@ – %@", [BVGAPI hhmm:dep], [BVGAPI hhmm:arr]];
+    cell.durationLabel.text = mins >= 60 ? [NSString stringWithFormat:@"%ld:%02ld h", (long)(mins / 60), (long)(mins % 60)]
+                                         : [NSString stringWithFormat:@"%ld min", (long)mins];
     cell.linesView.image = [BVGAPI badgeStripForLines:lines];
 
     NSMutableArray *info = [NSMutableArray array];
     NSInteger transfers = MAX((NSInteger)lines.count - 1, 0);
-    if (transfers == 0) {
-        [info addObject:@"direkt"];
-    } else {
-        NSTimeInterval slack = [GuidanceManager minTransferSlack:legs];
-        [info addObject:[NSString stringWithFormat:@"%ld× umsteigen (mind. %ld min)", (long)transfers, (long)floor(slack / 60.0)]];
-    }
+    if (transfers == 0) [info addObject:@"direkt"];
+    else [info addObject:[NSString stringWithFormat:@"%ld× umsteigen", (long)transfers]];
     if (firstStop && firstTransitDep) {
         NSInteger leave = (NSInteger)floor([firstTransitDep timeIntervalSinceNow] / 60.0);
         [info addObject:leave > 0 ? [NSString stringWithFormat:@"in %ld min ab %@", (long)leave, firstStop]
                                   : [NSString stringWithFormat:@"ab %@", firstStop]];
     }
-    if (firstDelay > 0) [info addObject:[NSString stringWithFormat:@"+%ld", (long)firstDelay]];
-    if (cancelled) [info addObject:@"⚠ Ausfall"];
+    UIColor *color = [BVGTheme textSecondary];
+    if (firstDelay > 0) { [info insertObject:[NSString stringWithFormat:@"+%ld min", (long)firstDelay] atIndex:0]; color = [BVGTheme red]; }
+    if (cancelled) { [info insertObject:@"⚠︎ Ausfall" atIndex:0]; color = [BVGTheme red]; }
 
     cell.infoLabel.text = [info componentsJoinedByString:@" · "];
-    cell.infoLabel.textColor = (cancelled || firstDelay > 0) ? [BVGTheme red] : [BVGTheme textSecondary];
+    cell.infoLabel.textColor = color;
+    cell.accessibilityLabel = [NSString stringWithFormat:@"%@ bis %@, %ld Minuten, %@",
+                               [BVGAPI hhmm:dep], [BVGAPI hhmm:arr], (long)mins, cell.infoLabel.text];
 }
 
 #pragma mark - Table
 
-// Abschnitte: 0 Von/Nach · 1 Zeit · 2 Suchen-Knopf · 3+ je eine Karte pro Verbindung
+- (NSArray *)sectionKinds {
+    NSMutableArray *k = [NSMutableArray array];
+    if (self.timeControl.selectedIndex > 0) [k addObject:@(JourneySectionDate)];
+    [k addObject:@(JourneySectionSearch)];
+    if (!self.journeys.count && !self.searching) [k addObject:@(JourneySectionQuick)];
+    for (NSUInteger i = 0; i < self.journeys.count; i++) [k addObject:@(JourneySectionResult)];
+    return k;
+}
+
+- (JourneySection)kindOfSection:(NSInteger)section {
+    NSArray *k = [self sectionKinds];
+    return section < (NSInteger)k.count ? [k[section] integerValue] : JourneySectionResult;
+}
+
+- (NSDictionary *)journeyForSection:(NSInteger)section {
+    NSInteger first = [[self sectionKinds] indexOfObject:@(JourneySectionResult)];
+    NSInteger i = section - first;
+    return (first != NSNotFound && i >= 0 && i < (NSInteger)self.journeys.count) ? self.journeys[i] : nil;
+}
+
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView {
-    return 3 + self.journeys.count;
+    return [self sectionKinds].count;
 }
 
 - (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section {
-    if (section == 1) return @"Wann?";
-    if (section == 3) return @"Verbindungen";
+    JourneySection kind = [self kindOfSection:section];
+    if (kind == JourneySectionQuick) return @"Schnellziele";
+    if (kind == JourneySectionResult && section > 0 && [self kindOfSection:section - 1] != JourneySectionResult) {
+        return @"Verbindungen";
+    }
     return nil;
 }
 
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section {
-    if (section != 2) return nil;
-    if (self.searching) return @"Suche Verbindungen …";
-    return self.errorText;
+    JourneySection kind = [self kindOfSection:section];
+    if (kind == JourneySectionSearch) {
+        if (self.searching) return @"Suche Verbindungen …";
+        if (self.errorText) return self.errorText;
+        return [NSString stringWithFormat:@"Umstiege immer mit mind. %ld min Puffer.", (long)[BVGSettings transferMinutes]];
+    }
+    if (kind == JourneySectionQuick) return @"Gedrückt halten zum Ändern.";
+    return nil;
 }
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
-    switch (section) {
-        case 0: return 2;
-        case 1: return self.timeControl.selectedIndex == 0 ? 1 : 2;
-        default: return 1;
-    }
+    return [self kindOfSection:section] == JourneySectionQuick ? 2 : 1;
 }
 
 - (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath {
-    if (indexPath.section == 0) return 60;
-    if (indexPath.section == 1) return indexPath.row == 1 ? 180 : 56;
-    if (indexPath.section == 2) return 52;
-    return 94;
-}
-
-// kleine runde Markierung: Start gruen gefuellt, Ziel als Ring
-+ (UIImage *)endpointIcon:(BOOL)isFrom {
-    CGSize size = CGSizeMake(22, 22);
-    UIGraphicsBeginImageContextWithOptions(size, NO, 0);
-    UIBezierPath *p = [UIBezierPath bezierPathWithOvalInRect:CGRectMake(4, 4, 14, 14)];
-    if (isFrom) { [[BVGTheme green] setFill]; [p fill]; }
-    else { p.lineWidth = 4; [[BVGTheme red] setStroke]; [p stroke]; }
-    UIImage *img = UIGraphicsGetImageFromCurrentImageContext();
-    UIGraphicsEndImageContext();
-    return img;
+    switch ([self kindOfSection:indexPath.section]) {
+        case JourneySectionDate:   return 180;
+        case JourneySectionSearch: return 44;
+        case JourneySectionQuick:  return 50;
+        case JourneySectionResult: return 84;
+    }
+    return 52;
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
-    if (indexPath.section >= 3) {
+    JourneySection kind = [self kindOfSection:indexPath.section];
+
+    if (kind == JourneySectionResult) {
         JourneyCell *cell = [tableView dequeueReusableCellWithIdentifier:@"journey"];
         if (!cell) cell = [[JourneyCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:@"journey"];
-        [self configureCell:cell journey:self.journeys[indexPath.section - 3]];
+        [self configureCell:cell journey:[self journeyForSection:indexPath.section]];
         return cell;
     }
 
     CardCell *cell = [[CardCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:nil];
-    if (indexPath.section == 0) {
-        BOOL isFrom = indexPath.row == 0;
-        cell.imageView.image = [JourneyViewController endpointIcon:isFrom];
-        cell.textLabel.font = [BVGTheme font:17 weight:UIFontWeightSemibold];
-        if (isFrom) cell.textLabel.text = self.from ? self.from[@"name"] : @"Mein Standort";
-        else        cell.textLabel.text = self.to ? self.to[@"name"] : @"Ziel wählen";
-        if (!isFrom && !self.to) cell.textLabel.textColor = [BVGTheme link];
-        cell.detailTextLabel.text = isFrom ? @"Start" : @"Ziel";
-        cell.detailTextLabel.font = [BVGTheme font:13 weight:UIFontWeightRegular];
-        cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
-    } else if (indexPath.section == 1 && indexPath.row == 1) {
+    if (kind == JourneySectionDate) {
         cell.selectionStyle = UITableViewCellSelectionStyleNone;
         [self.datePicker removeFromSuperview];
         self.datePicker.frame = CGRectMake(0, 0, tableView.bounds.size.width - 2 * [BVGTheme cardInset], 180);
         self.datePicker.autoresizingMask = UIViewAutoresizingFlexibleWidth;
         [cell.contentView addSubview:self.datePicker];
-    } else if (indexPath.section == 1) {
-        cell.selectionStyle = UITableViewCellSelectionStyleNone;
-        [self.timeControl removeFromSuperview];
-        self.timeControl.frame = CGRectMake(-[BVGTheme cardInset] + 12, 6, tableView.bounds.size.width - 2 * [BVGTheme cardInset], 44);
-        [cell.contentView addSubview:self.timeControl];
-    } else {
+    } else if (kind == JourneySectionSearch) {
+        // dunkler Hauptknopf
         cell.textLabel.text = self.searching ? @"Suche …" : @"Verbindungen suchen";
         cell.textLabel.textAlignment = NSTextAlignmentCenter;
-        cell.textLabel.font = [BVGTheme font:17 weight:UIFontWeightSemibold];
-        cell.textLabel.textColor = [BVGTheme textPrimary];
-        cell.cardColor = [BVGTheme accent];
+        cell.textLabel.font = [BVGTheme font:16 weight:UIFontWeightSemibold];
+        cell.textLabel.textColor = [UIColor whiteColor];
+        cell.cardColor = [BVGTheme textPrimary];
+        cell.accessibilityTraits = UIAccessibilityTraitButton;
+    } else {
+        NSArray *defs = @[@[@"home", @"⌂", @"Nach Hause"], @[@"work", @"✱", @"Zur Arbeit"]];
+        NSArray *d = defs[indexPath.row];
+        NSDictionary *place = [BVGSettings placeForKey:d[0]];
+        cell.imageView.image = [JourneyViewController roundIcon:d[1]];
+        cell.textLabel.text = d[2];
+        cell.textLabel.font = [BVGTheme font:15 weight:UIFontWeightSemibold];
+        cell.detailTextLabel.font = [BVGTheme font:12 weight:UIFontWeightRegular];
+        cell.detailTextLabel.text = place ? place[@"name"] : @"Antippen zum Festlegen";
+        cell.detailTextLabel.textColor = place ? [BVGTheme textSecondary] : [BVGTheme link];
+        cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
+        if (!cell.gestureRecognizers.count) {
+            [cell addGestureRecognizer:[[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(quickLongPress:)]];
+        }
     }
     return cell;
 }
 
++ (UIImage *)roundIcon:(NSString *)text {
+    CGSize size = CGSizeMake(28, 28);
+    UIGraphicsBeginImageContextWithOptions(size, NO, 0);
+    [[BVGTheme accentSoft] setFill];
+    [[UIBezierPath bezierPathWithOvalInRect:CGRectMake(0, 0, 28, 28)] fill];
+    NSDictionary *attrs = @{ NSFontAttributeName: [UIFont systemFontOfSize:14 weight:UIFontWeightSemibold],
+                             NSForegroundColorAttributeName: [BVGTheme textPrimary] };
+    CGSize t = [text sizeWithAttributes:attrs];
+    [text drawAtPoint:CGPointMake((28 - t.width) / 2, (28 - t.height) / 2) withAttributes:attrs];
+    UIImage *img = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+    return img;
+}
+
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
     [tableView deselectRowAtIndexPath:indexPath animated:YES];
-    if (indexPath.section == 0) {
-        [self chooseEndpoint:(indexPath.row == 0)];
-    } else if (indexPath.section == 2) {
-        [self startSearch];
-    } else if (indexPath.section >= 3) {
-        JourneyDetailViewController *vc = [[JourneyDetailViewController alloc] initWithJourney:self.journeys[indexPath.section - 3]];
-        [self.navigationController pushViewController:vc animated:YES];
+    switch ([self kindOfSection:indexPath.section]) {
+        case JourneySectionSearch: [self startSearch]; break;
+        case JourneySectionQuick:  [self quickPlaceTapped:indexPath.row]; break;
+        case JourneySectionResult: {
+            NSDictionary *j = [self journeyForSection:indexPath.section];
+            if (!j) break;
+            JourneyDetailViewController *vc = [[JourneyDetailViewController alloc] initWithJourney:j];
+            [self.navigationController pushViewController:vc animated:YES];
+            break;
+        }
+        default: break;
     }
 }
 

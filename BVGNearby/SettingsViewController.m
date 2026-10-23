@@ -1,6 +1,8 @@
 #import "SettingsViewController.h"
 #import "BVGSettings.h"
 #import "BVGAPI.h"
+#import "AlarmsViewController.h"
+#import "SearchViewController.h"
 #import <CoreSpotlight/CoreSpotlight.h>
 #import <objc/runtime.h>
 
@@ -14,10 +16,12 @@ static char kSwitchKey;   // Zuordnung UISwitch -> Einstellungs-Schluessel
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-    self.largeTitle = @"Einstellungen";
-    self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemDone
-                                                                                           target:self action:@selector(close)];
+    self.largeTitle = @"Mehr";
+    [[NSNotificationCenter defaultCenter] addObserver:self.tableView selector:@selector(reloadData)
+                                                 name:BVGAlarmsChangedNotification object:nil];
     self.sections = @[
+        @{ @"title": @"",
+           @"rows": @[ @{ @"title": @"Wecker", @"open": @"alarms" } ] },
         @{ @"title": @"Abfahrten",
            @"rows": @[
                @{ @"title": @"Suchradius", @"key": @"set.radius",
@@ -32,7 +36,7 @@ static char kSwitchKey;   // Zuordnung UISwitch -> Einstellungs-Schluessel
                @{ @"title": @"Einsteigen-Hinweis", @"key": @"set.boardLead",
                   @"values": @[@1, @2, @3, @5], @"labels": @[@"1 min vorher", @"2 min vorher", @"3 min vorher", @"5 min vorher"] } ] },
         @{ @"title": @"Orte",
-           @"footer": @"Festlegen oder ändern: im Route-Tab das Schnellziel gedrückt halten.",
+           @"footer": @"Werden als Schnellziele in „Verbindung“ angezeigt.",
            @"rows": @[ @{ @"title": @"🏠  Zuhause", @"place": @"home" },
                        @{ @"title": @"💼  Arbeit", @"place": @"work" } ] },
         @{ @"title": @"Ansagen",
@@ -48,8 +52,13 @@ static char kSwitchKey;   // Zuordnung UISwitch -> Einstellungs-Schluessel
     ];
 }
 
-- (void)close {
-    [self dismissViewControllerAnimated:YES completion:nil];
+- (void)dealloc {
+    [[NSNotificationCenter defaultCenter] removeObserver:self.tableView];
+}
+
+- (void)viewWillAppear:(BOOL)animated {
+    [super viewWillAppear:animated];
+    [self.tableView reloadData];   // Wecker-Anzahl, Datenquelle
 }
 
 #pragma mark - Table
@@ -75,9 +84,15 @@ static char kSwitchKey;   // Zuordnung UISwitch -> Einstellungs-Schluessel
     CardCell *cell = [[CardCell alloc] initWithStyle:UITableViewCellStyleValue1 reuseIdentifier:nil];
     cell.textLabel.text = row[@"title"];
     cell.selectionStyle = UITableViewCellSelectionStyleNone;
-    cell.detailTextLabel.font = [BVGTheme font:16 weight:UIFontWeightRegular];
+    cell.detailTextLabel.font = [BVGTheme font:15 weight:UIFontWeightRegular];
 
-    if (row[@"values"]) {
+    if (row[@"open"]) {
+        NSUInteger n = [BVGAPI userAlarms].count;
+        cell.textLabel.font = [BVGTheme font:16 weight:UIFontWeightRegular];
+        cell.detailTextLabel.text = n ? [NSString stringWithFormat:@"%lu aktiv", (unsigned long)n] : @"keine";
+        cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
+        cell.selectionStyle = UITableViewCellSelectionStyleDefault;
+    } else if (row[@"values"]) {
         // aktueller Wert rechts, Antippen oeffnet die Auswahl (wie in den iOS-Einstellungen)
         NSInteger current = [[NSUserDefaults standardUserDefaults] integerForKey:row[@"key"]];
         NSUInteger idx = [row[@"values"] indexOfObject:@(current)];
@@ -86,8 +101,10 @@ static char kSwitchKey;   // Zuordnung UISwitch -> Einstellungs-Schluessel
         cell.selectionStyle = UITableViewCellSelectionStyleDefault;
     } else if (row[@"place"]) {
         NSDictionary *place = [BVGSettings placeForKey:row[@"place"]];
-        cell.detailTextLabel.text = place ? place[@"name"] : @"nicht festgelegt";
-        if (place) cell.selectionStyle = UITableViewCellSelectionStyleDefault;
+        cell.detailTextLabel.text = place ? place[@"name"] : @"festlegen";
+        cell.detailTextLabel.textColor = place ? [BVGTheme textSecondary] : [BVGTheme link];
+        cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
+        cell.selectionStyle = UITableViewCellSelectionStyleDefault;
     } else if (row[@"switch"]) {
         UISwitch *sw = [[UISwitch alloc] init];
         sw.on = [[NSUserDefaults standardUserDefaults] boolForKey:row[@"switch"]];
@@ -130,17 +147,39 @@ static char kSwitchKey;   // Zuordnung UISwitch -> Einstellungs-Schluessel
 - (void)switchChanged:(UISwitch *)sw {
     NSString *key = objc_getAssociatedObject(sw, &kSwitchKey);
     [BVGSettings setBool:sw.on forKey:key];
+    [BVGAPI syncWidget];
     if ([key isEqualToString:@"set.speech"] && !sw.on) [BVGAPI stopSpeaking];
+}
+
+- (void)pickPlaceForKey:(NSString *)key {
+    __weak SettingsViewController *weakSelf = self;
+    SearchViewController *search = [[SearchViewController alloc] initWithStyle:UITableViewStylePlain];
+    search.allowAddresses = YES;
+    search.pickTitle = [key isEqualToString:@"home"] ? @"Zuhause festlegen" : @"Arbeit festlegen";
+    search.pickHandler = ^(NSDictionary *place) {
+        if (!place) return;
+        [BVGSettings setPlace:place forKey:key];
+        [weakSelf.tableView reloadData];
+    };
+    [self.navigationController pushViewController:search animated:YES];
 }
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
     [tableView deselectRowAtIndexPath:indexPath animated:YES];
     NSDictionary *row = self.sections[indexPath.section][@"rows"][indexPath.row];
+    if (row[@"open"]) {
+        [self.navigationController pushViewController:[[AlarmsViewController alloc] initWithStyle:UITableViewStylePlain]
+                                             animated:YES];
+        return;
+    }
     if (row[@"values"]) { [self chooseValueForRow:row]; return; }
     if (row[@"place"]) {
-        if (![BVGSettings placeForKey:row[@"place"]]) return;
+        if (![BVGSettings placeForKey:row[@"place"]]) { [self pickPlaceForKey:row[@"place"]]; return; }
         UIAlertController *a = [UIAlertController alertControllerWithTitle:row[@"title"] message:nil
                                                              preferredStyle:UIAlertControllerStyleActionSheet];
+        [a addAction:[UIAlertAction actionWithTitle:@"Ändern …" style:UIAlertActionStyleDefault handler:^(UIAlertAction *x) {
+            [self pickPlaceForKey:row[@"place"]];
+        }]];
         [a addAction:[UIAlertAction actionWithTitle:@"Ort entfernen" style:UIAlertActionStyleDestructive handler:^(UIAlertAction *x) {
             [BVGSettings setPlace:nil forKey:row[@"place"]];
             [self.tableView reloadData];

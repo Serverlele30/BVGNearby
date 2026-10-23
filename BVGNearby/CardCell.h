@@ -8,3 +8,12 @@
 @property (nonatomic, assign) BOOL lastInSection;
 - (void)applyCardStyle;
 @end
+
+// Mehrzeilige Zelle: Symbol links, Titel + Detail beliebig lang.
+// Die Hoehe wird selbst berechnet (iOS 9 kann das mit Standardzellen nicht zuverlaessig).
+@interface InfoCell : CardCell
+@property (nonatomic, strong, readonly) UIImageView *iconView;
+@property (nonatomic, strong, readonly) UILabel *titleLabel;
+@property (nonatomic, strong, readonly) UILabel *detailLabel;
+- (CGFloat)fittingHeightForTableWidth:(CGFloat)tableWidth;
+@end

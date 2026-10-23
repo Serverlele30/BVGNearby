@@ -63,14 +63,14 @@
 
     // grosse Weckzeit links, darunter die Fahrt
     NSMutableAttributedString *title = [[NSMutableAttributedString alloc] initWithString:[BVGAPI hhmm:n.fireDate]
-        attributes:@{ NSFontAttributeName: [BVGTheme digits:26 weight:UIFontWeightSemibold],
+        attributes:@{ NSFontAttributeName: [BVGTheme digits:22 weight:UIFontWeightSemibold],
                       NSForegroundColorAttributeName: [BVGTheme textPrimary] }];
     NSInteger mins = (NSInteger)floor([n.fireDate timeIntervalSinceNow] / 60.0);
     NSString *rest = mins >= 60 ? [NSString stringWithFormat:@"  in %ld:%02ld h", (long)(mins / 60), (long)(mins % 60)]
                                 : [NSString stringWithFormat:@"  in %ld min", (long)MAX(mins, 0)];
     [title appendAttributedString:[[NSAttributedString alloc] initWithString:rest
         attributes:@{ NSFontAttributeName: [BVGTheme font:14 weight:UIFontWeightMedium],
-                      NSForegroundColorAttributeName: [BVGTheme orange] }]];
+                      NSForegroundColorAttributeName: [BVGTheme warningText] }]];
     cell.textLabel.attributedText = title;
 
     NSMutableString *sub = [NSMutableString string];

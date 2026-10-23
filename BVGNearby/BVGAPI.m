@@ -10,6 +10,7 @@ static NSString *gLastSource = nil;
 static NSString * const kFavoritesKey = @"favorites";
 static NSString * const kRecentsKey   = @"recentStops";
 static NSString * const kSpotlightPrefix = @"stop:";
+static NSString * const kAppGroup = @"group.com.serverlele.BVGNearby";   // gemeinsam mit dem Widget
 
 NSString * const BVGFavoritesChangedNotification = @"BVGFavoritesChanged";
 NSString * const BVGAlarmsChangedNotification    = @"BVGAlarmsChanged";
@@ -192,13 +193,15 @@ NSString * const BVGAlarmsChangedNotification    = @"BVGAlarmsChanged";
     UIImage *cached = [cache objectForKey:key];
     if (cached) return cached;
 
-    NSDictionary *attrs = @{ NSFontAttributeName: [UIFont systemFontOfSize:14 weight:UIFontWeightBold],
+    NSDictionary *attrs = @{ NSFontAttributeName: [UIFont systemFontOfSize:13 weight:UIFontWeightBold],
                              NSForegroundColorAttributeName: fg ?: [UIColor whiteColor] };
     CGSize textSize = [name sizeWithAttributes:attrs];
-    CGSize size = CGSizeMake(MAX(42, ceil(textSize.width) + 16), 24);
+    CGSize size = CGSizeMake(MAX(38, ceil(textSize.width) + 12), 22);
 
     UIGraphicsBeginImageContextWithOptions(size, NO, 0);
-    CGFloat radius = [product isEqualToString:@"suburban"] ? size.height / 2 : 7;
+    // S-Bahn rund, U-Bahn fast eckig, Rest leicht abgerundet - wie auf den Anzeigen
+    CGFloat radius = [product isEqualToString:@"suburban"] ? size.height / 2
+                   : ([product isEqualToString:@"subway"] ? 3 : 5);
     [[self colorForLine:line] setFill];
     [[UIBezierPath bezierPathWithRoundedRect:CGRectMake(0, 0, size.width, size.height) cornerRadius:radius] fill];
     [name drawAtPoint:CGPointMake((size.width - textSize.width) / 2, (size.height - textSize.height) / 2)
@@ -221,7 +224,7 @@ NSString * const BVGAlarmsChangedNotification    = @"BVGAlarmsChanged";
     }
     if (!imgs.count) return nil;
 
-    UIGraphicsBeginImageContextWithOptions(CGSizeMake(width - 4, 24), NO, 0);
+    UIGraphicsBeginImageContextWithOptions(CGSizeMake(width - 4, 22), NO, 0);
     CGFloat x = 0;
     for (UIImage *b in imgs) {
         [b drawAtPoint:CGPointMake(x, 0)];
@@ -230,6 +233,24 @@ NSString * const BVGAlarmsChangedNotification    = @"BVGAlarmsChanged";
     UIImage *img = UIGraphicsGetImageFromCurrentImageContext();
     UIGraphicsEndImageContext();
     return img;
+}
+
++ (NSString *)shortName:(NSString *)name {
+    if (![name isKindOfClass:[NSString class]] || !name.length) return name;
+    return [name stringByReplacingOccurrencesOfString:@"\\s*\\((Berlin|Bln)\\)" withString:@""
+                                              options:NSRegularExpressionSearch range:NSMakeRange(0, name.length)];
+}
+
++ (NSString *)platform:(NSString *)platform {
+    if (![platform isKindOfClass:[NSString class]] || !platform.length) return nil;
+    NSString *p = [platform stringByReplacingOccurrencesOfString:@"\\s*\\(.*\\)" withString:@""
+                                                          options:NSRegularExpressionSearch range:NSMakeRange(0, platform.length)];
+    return p.length ? p : platform;
+}
+
++ (UIBarButtonItem *)barButtonWithIcon:(NSString *)icon target:(id)target action:(SEL)action {
+    return [[UIBarButtonItem alloc] initWithImage:[self smallIconNamed:icon size:22]
+                                            style:UIBarButtonItemStylePlain target:target action:action];
 }
 
 + (NSString *)spokenLineName:(NSDictionary *)line {
@@ -250,6 +271,41 @@ NSString * const BVGAlarmsChangedNotification    = @"BVGAlarmsChanged";
     else { [[UIColor whiteColor] setFill]; [p fill]; [color setStroke]; [p stroke]; }
     UIImage *img = UIGraphicsGetImageFromCurrentImageContext();
     UIGraphicsEndImageContext();
+    return img;
+}
+
++ (UIImage *)smallIconNamed:(NSString *)name size:(CGFloat)size {
+    UIImage *big = [self tabIconNamed:name];
+    UIGraphicsBeginImageContextWithOptions(CGSizeMake(size, size), NO, 0);
+    [big drawInRect:CGRectMake(0, 0, size, size)];
+    UIImage *img = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+    return [img imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+}
+
+// Haltestellenschild: gelber Kreis mit gruenem "H" (wie an jeder deutschen Haltestelle)
++ (UIImage *)stopSignWithSize:(CGFloat)d {
+    static NSCache *cache;
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{ cache = [[NSCache alloc] init]; });
+    NSNumber *key = @(d);
+    UIImage *img = [cache objectForKey:key];
+    if (img) return img;
+
+    UIGraphicsBeginImageContextWithOptions(CGSizeMake(d, d), NO, 0);
+    UIColor *green = [UIColor colorWithRed:0 green:0.46 blue:0.25 alpha:1];
+    [green setFill];
+    [[UIBezierPath bezierPathWithOvalInRect:CGRectMake(0, 0, d, d)] fill];
+    [[UIColor colorWithRed:0.94 green:0.84 blue:0.13 alpha:1] setFill];
+    CGFloat ring = MAX(1.5, d * 0.07);
+    [[UIBezierPath bezierPathWithOvalInRect:CGRectMake(ring, ring, d - 2 * ring, d - 2 * ring)] fill];
+    NSDictionary *attrs = @{ NSFontAttributeName: [UIFont systemFontOfSize:d * 0.6 weight:UIFontWeightHeavy],
+                             NSForegroundColorAttributeName: green };
+    CGSize t = [@"H" sizeWithAttributes:attrs];
+    [@"H" drawAtPoint:CGPointMake((d - t.width) / 2, (d - t.height) / 2) withAttributes:attrs];
+    img = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+    [cache setObject:img forKey:key];
     return img;
 }
 
@@ -304,6 +360,40 @@ NSString * const BVGAlarmsChangedNotification    = @"BVGAlarmsChanged";
         CGFloat dash[] = {3, 3};
         [path setLineDash:dash count:2 phase:0];
         [path stroke];
+    } else if ([name isEqualToString:@"speaker"]) {
+        // Lautsprecher mit zwei Schallboegen
+        UIBezierPath *body = [UIBezierPath bezierPath];
+        [body moveToPoint:CGPointMake(3, 9)];
+        [body addLineToPoint:CGPointMake(7, 9)];
+        [body addLineToPoint:CGPointMake(12, 4)];
+        [body addLineToPoint:CGPointMake(12, 21)];
+        [body addLineToPoint:CGPointMake(7, 16)];
+        [body addLineToPoint:CGPointMake(3, 16)];
+        [body closePath];
+        [body fill];
+        for (int i = 0; i < 2; i++) {
+            CGFloat r = 5 + i * 4.5;
+            UIBezierPath *wave = [UIBezierPath bezierPathWithArcCenter:CGPointMake(12, 12.5) radius:r
+                                                            startAngle:-M_PI / 3.5 endAngle:M_PI / 3.5 clockwise:YES];
+            wave.lineWidth = 2;
+            wave.lineCapStyle = kCGLineCapRound;
+            [wave stroke];
+        }
+    } else if ([name isEqualToString:@"locate"]) {
+        // Ortungspfeil (wie in Apple Karten)
+        UIBezierPath *arrow = [UIBezierPath bezierPath];
+        [arrow moveToPoint:CGPointMake(22, 3)];
+        [arrow addLineToPoint:CGPointMake(3, 11.5)];
+        [arrow addLineToPoint:CGPointMake(12, 13)];
+        [arrow addLineToPoint:CGPointMake(13.5, 22)];
+        [arrow closePath];
+        arrow.lineWidth = 2;
+        arrow.lineJoinStyle = kCGLineJoinRound;
+        [arrow stroke];
+    } else if ([name isEqualToString:@"more"]) {
+        for (int i = 0; i < 3; i++) {
+            [[UIBezierPath bezierPathWithOvalInRect:CGRectMake(3 + i * 7.5, 10, 4.5, 4.5)] fill];
+        }
     } else if ([name isEqualToString:@"alarm"]) {
         UIBezierPath *face = [UIBezierPath bezierPathWithOvalInRect:CGRectMake(3, 4, 19, 19)];
         face.lineWidth = 2;
@@ -342,7 +432,15 @@ NSString * const BVGAlarmsChangedNotification    = @"BVGAlarmsChanged";
     [[NSUserDefaults standardUserDefaults] setObject:list forKey:kFavoritesKey];
     [[NSUserDefaults standardUserDefaults] synchronize];
     if (fav) [self indexStopInSpotlight:stopId name:name];
+    [self syncWidget];
     [[NSNotificationCenter defaultCenter] postNotificationName:BVGFavoritesChangedNotification object:nil];
+}
+
++ (void)syncWidget {
+    NSUserDefaults *shared = [[NSUserDefaults alloc] initWithSuiteName:kAppGroup];
+    [shared setObject:[self favorites] forKey:@"favorites"];
+    [shared setBool:[[NSUserDefaults standardUserDefaults] boolForKey:@"set.ownServer"] forKey:@"ownServer"];
+    [shared synchronize];
 }
 
 #pragma mark - Zuletzt angesehen

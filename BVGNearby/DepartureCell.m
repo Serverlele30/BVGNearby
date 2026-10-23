@@ -2,6 +2,7 @@
 #import "BVGAPI.h"
 #import "BVGTheme.h"
 
+// Abfahrt im Stil der BVG-Anzeigen: Linie | Richtung (fett) + Infozeile | grosse Minutenzahl
 @interface DepartureCell ()
 @property (nonatomic, strong) UIImageView *badgeView;
 @property (nonatomic, strong) UILabel *directionLabel;
@@ -13,7 +14,7 @@
 
 @implementation DepartureCell
 
-+ (CGFloat)height { return 64; }
++ (CGFloat)height { return 56; }
 
 - (instancetype)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)reuseIdentifier {
     self = [super initWithStyle:UITableViewCellStyleDefault reuseIdentifier:reuseIdentifier];
@@ -23,12 +24,14 @@
         [self.contentView addSubview:_badgeView];
 
         _directionLabel = [[UILabel alloc] init];
-        _directionLabel.font = [BVGTheme font:16 weight:UIFontWeightSemibold];
+        _directionLabel.font = [BVGTheme font:15 weight:UIFontWeightSemibold];
         _directionLabel.textColor = [BVGTheme textPrimary];
+        _directionLabel.adjustsFontSizeToFitWidth = YES;
+        _directionLabel.minimumScaleFactor = 0.85;
         [self.contentView addSubview:_directionLabel];
 
         _infoLabel = [[UILabel alloc] init];
-        _infoLabel.font = [BVGTheme font:13 weight:UIFontWeightRegular];
+        _infoLabel.font = [BVGTheme font:12 weight:UIFontWeightRegular];
         [self.contentView addSubview:_infoLabel];
 
         _minutesLabel = [[UILabel alloc] init];
@@ -36,13 +39,16 @@
         [self.contentView addSubview:_minutesLabel];
 
         _subLabel = [[UILabel alloc] init];
-        _subLabel.font = [BVGTheme digits:12 weight:UIFontWeightMedium];
+        _subLabel.font = [BVGTheme digits:11 weight:UIFontWeightMedium];
+        _subLabel.adjustsFontSizeToFitWidth = YES;
+        _subLabel.minimumScaleFactor = 0.8;
         _subLabel.textAlignment = NSTextAlignmentRight;
         [self.contentView addSubview:_subLabel];
 
         _emptyLabel = [[UILabel alloc] init];
-        _emptyLabel.font = [BVGTheme font:15 weight:UIFontWeightRegular];
+        _emptyLabel.font = [BVGTheme font:14 weight:UIFontWeightRegular];
         _emptyLabel.textColor = [BVGTheme textSecondary];
+        _emptyLabel.numberOfLines = 2;
         _emptyLabel.hidden = YES;
         [self.contentView addSubview:_emptyLabel];
     }
@@ -53,19 +59,21 @@
     [super layoutSubviews];
     CGFloat w = self.contentView.bounds.size.width;
     CGFloat h = self.contentView.bounds.size.height;
-    CGFloat right = 76;
-    CGFloat textX = 80;
+    CGFloat right = 70;
+    CGFloat badgeW = MAX(46, MIN(self.badgeView.image.size.width, 60));
+    CGFloat textX = 12 + badgeW + 10;
+    CGFloat textW = w - textX - right - 14;
 
-    self.badgeView.frame      = CGRectMake(14, (h - 24) / 2, 62, 24);
-    self.directionLabel.frame = CGRectMake(textX, 12, w - textX - right - 6, 20);
-    self.infoLabel.frame      = CGRectMake(textX, 34, w - textX - right - 6, 17);
-    self.minutesLabel.frame   = CGRectMake(w - right - 14, 9, right, 28);
-    self.subLabel.frame       = CGRectMake(w - right - 14, 37, right, 16);
+    self.badgeView.frame      = CGRectMake(12, (h - 22) / 2, badgeW, 22);
+    self.directionLabel.frame = CGRectMake(textX, 10, textW, 19);
+    self.infoLabel.frame      = CGRectMake(textX, 30, textW, 16);
+    self.minutesLabel.frame   = CGRectMake(w - right - 10, 8, right, 24);
+    self.subLabel.frame       = CGRectMake(w - right - 10, 31, right, 15);
     self.emptyLabel.frame     = CGRectMake(16, 0, w - 32, h);
 }
 
 - (void)setDimmed:(BOOL)dimmed {
-    self.contentView.alpha = dimmed ? 0.38 : 1.0;
+    self.contentView.alpha = dimmed ? 0.35 : 1.0;
 }
 
 - (void)setAllHidden:(BOOL)hidden {
@@ -85,36 +93,36 @@
     [self setAllHidden:NO];
     NSDictionary *line = NN(d[@"line"]);
     NSString *tripId   = NN(d[@"tripId"]);
-    NSString *dir      = NN(d[@"direction"]) ?: @"";
+    NSString *dir      = [BVGAPI shortName:NN(d[@"direction"])] ?: @"";
     BOOL cancelled     = [NN(d[@"cancelled"]) boolValue];
     NSDate *when       = [BVGAPI whenOfDeparture:d];
 
     self.badgeView.image = [BVGAPI badgeForLine:line];
     self.selectionStyle  = tripId ? UITableViewCellSelectionStyleDefault : UITableViewCellSelectionStyleNone;
+    [self setNeedsLayout];
 
     // Richtung
     if (cancelled) {
         self.directionLabel.attributedText = [[NSAttributedString alloc] initWithString:dir attributes:@{
             NSStrikethroughStyleAttributeName: @(NSUnderlineStyleSingle),
-            NSFontAttributeName: [BVGTheme font:16 weight:UIFontWeightSemibold],
+            NSFontAttributeName: [BVGTheme font:15 weight:UIFontWeightSemibold],
             NSForegroundColorAttributeName: [BVGTheme textTertiary] }];
     } else {
         self.directionLabel.attributedText = nil;
-        self.directionLabel.font = [BVGTheme font:16 weight:UIFontWeightSemibold];
+        self.directionLabel.font = [BVGTheme font:15 weight:UIFontWeightSemibold];
         self.directionLabel.textColor = [BVGTheme textPrimary];
         self.directionLabel.text = dir;
     }
 
-    // Infozeile: Wecker, Gleis/Gleiswechsel, Stoerung
+    // Infozeile: Ausfall, Stoerung, Gleis(-wechsel), Wecker
     NSMutableArray *info = [NSMutableArray array];
     UIColor *infoColor = [BVGTheme textSecondary];
-    if ([BVGAPI hasAlarmForTrip:tripId]) [info addObject:@"⏰ Wecker"];
 
-    NSString *platform = NN(d[@"platform"]);
-    NSString *planned  = NN(d[@"plannedPlatform"]);
+    NSString *platform = [BVGAPI platform:NN(d[@"platform"])];
+    NSString *planned  = [BVGAPI platform:NN(d[@"plannedPlatform"])];
     if (platform && planned && ![platform isEqualToString:planned]) {
         [info addObject:[NSString stringWithFormat:@"Gleis %@ statt %@", platform, planned]];
-        infoColor = [BVGTheme orange];
+        infoColor = [BVGTheme warningText];
     } else if (platform ?: planned) {
         [info addObject:[NSString stringWithFormat:@"Gleis %@", platform ?: planned]];
     }
@@ -123,25 +131,27 @@
     if ([remarks isKindOfClass:[NSArray class]]) {
         for (NSDictionary *r in remarks) {
             if ([r isKindOfClass:[NSDictionary class]] && [NN(r[@"type"]) isEqualToString:@"warning"]) {
-                [info addObject:@"⚠︎ Störung"];
-                infoColor = [BVGTheme orange];
+                [info insertObject:@"⚠︎ Störung" atIndex:0];
+                infoColor = [BVGTheme warningText];
                 break;
             }
         }
     }
+    if ([BVGAPI hasAlarmForTrip:tripId]) [info addObject:@"⏰ Wecker"];
     if (cancelled) { [info insertObject:@"Fällt aus" atIndex:0]; infoColor = [BVGTheme red]; }
-    if (!info.count && when) [info addObject:[NSString stringWithFormat:@"Abfahrt %@", [BVGAPI hhmm:when]]];
-    self.infoLabel.text = [info componentsJoinedByString:@"  ·  "];
+    if (!info.count && when) [info addObject:[NSString stringWithFormat:@"ab %@", [BVGAPI hhmm:when]]];
+    self.infoLabel.text = [info componentsJoinedByString:@" · "];
     self.infoLabel.textColor = infoColor;
 
     // rechte Spalte
     if (cancelled) {
         self.minutesLabel.attributedText = nil;
-        self.minutesLabel.font = [BVGTheme font:15 weight:UIFontWeightSemibold];
+        self.minutesLabel.font = [BVGTheme font:14 weight:UIFontWeightSemibold];
         self.minutesLabel.textColor = [BVGTheme red];
         self.minutesLabel.text = @"Ausfall";
         self.subLabel.attributedText = [[NSAttributedString alloc] initWithString:[BVGAPI hhmm:when] attributes:@{
             NSStrikethroughStyleAttributeName: @(NSUnderlineStyleSingle),
+            NSFontAttributeName: [BVGTheme digits:11 weight:UIFontWeightMedium],
             NSForegroundColorAttributeName: [BVGTheme textTertiary] }];
         self.accessibilityLabel = [NSString stringWithFormat:@"%@ Richtung %@ fällt aus", [BVGAPI spokenLineName:line], dir];
         return;
@@ -154,21 +164,21 @@
 
     if (mins <= 0) {
         self.minutesLabel.attributedText = nil;
-        self.minutesLabel.font = [BVGTheme font:18 weight:UIFontWeightBold];
+        self.minutesLabel.font = [BVGTheme font:16 weight:UIFontWeightSemibold];
         self.minutesLabel.textColor = delay > 0 ? [BVGTheme red] : [BVGTheme green];
         self.minutesLabel.text = @"jetzt";
     } else if (mins >= 60) {
         self.minutesLabel.attributedText = nil;
-        self.minutesLabel.font = [BVGTheme digits:20 weight:UIFontWeightSemibold];
+        self.minutesLabel.font = [BVGTheme digits:17 weight:UIFontWeightSemibold];
         self.minutesLabel.textColor = numberColor;
         self.minutesLabel.text = [BVGAPI hhmm:when];
     } else {
         NSMutableAttributedString *s = [[NSMutableAttributedString alloc]
             initWithString:[NSString stringWithFormat:@"%ld", (long)mins]
-                attributes:@{ NSFontAttributeName: [BVGTheme digits:24 weight:UIFontWeightSemibold],
+                attributes:@{ NSFontAttributeName: [BVGTheme digits:20 weight:UIFontWeightSemibold],
                               NSForegroundColorAttributeName: numberColor }];
         [s appendAttributedString:[[NSAttributedString alloc] initWithString:@" min" attributes:@{
-            NSFontAttributeName: [BVGTheme font:13 weight:UIFontWeightMedium],
+            NSFontAttributeName: [BVGTheme font:12 weight:UIFontWeightRegular],
             NSForegroundColorAttributeName: [BVGTheme textSecondary] }]];
         self.minutesLabel.attributedText = s;
     }

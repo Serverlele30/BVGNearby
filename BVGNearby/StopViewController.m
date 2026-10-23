@@ -41,13 +41,13 @@
     self.filter.onChange = ^(NSInteger idx) { [weakSelf applyFilter]; };
 
     // darunter: Richtungsfilter (wird pro Haltestelle gemerkt, gilt auch in der Startansicht)
-    UIView *acc = [[UIView alloc] initWithFrame:CGRectMake(0, 0, self.view.bounds.size.width, 82)];
+    UIView *acc = [[UIView alloc] initWithFrame:CGRectMake(0, 0, self.view.bounds.size.width, 76)];
     [acc addSubview:self.filter];
     self.directionButton = [UIButton buttonWithType:UIButtonTypeCustom];
-    self.directionButton.frame = CGRectMake([BVGTheme cardInset] + 4, 46, acc.bounds.size.width - 2 * [BVGTheme cardInset] - 8, 32);
+    self.directionButton.frame = CGRectMake([BVGTheme cardInset] + 6, 44, acc.bounds.size.width - 2 * [BVGTheme cardInset] - 12, 28);
     self.directionButton.autoresizingMask = UIViewAutoresizingFlexibleWidth;
     self.directionButton.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeft;
-    self.directionButton.titleLabel.font = [BVGTheme font:15 weight:UIFontWeightMedium];
+    self.directionButton.titleLabel.font = [BVGTheme font:14 weight:UIFontWeightMedium];
     self.directionButton.titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
     [self.directionButton addTarget:self action:@selector(chooseDirection) forControlEvents:UIControlEventTouchUpInside];
     [acc addSubview:self.directionButton];
@@ -88,12 +88,11 @@
     UIBarButtonItem *star = [[UIBarButtonItem alloc] initWithTitle:(fav ? @"★" : @"☆")
                                                              style:UIBarButtonItemStylePlain
                                                             target:self action:@selector(toggleStar)];
-    [star setTitleTextAttributes:@{ NSFontAttributeName: [UIFont systemFontOfSize:24] } forState:UIControlStateNormal];
+    [star setTitleTextAttributes:@{ NSFontAttributeName: [UIFont systemFontOfSize:20] } forState:UIControlStateNormal];
 
-    star.tintColor = fav ? [BVGTheme orange] : [BVGTheme textSecondary];
-    UIBarButtonItem *speaker = [[UIBarButtonItem alloc] initWithTitle:@"Ansage"
-                                                                style:UIBarButtonItemStylePlain
-                                                               target:self action:@selector(announce)];
+    star.tintColor = fav ? [BVGTheme textPrimary] : [BVGTheme headerSecondary];
+    UIBarButtonItem *speaker = [BVGAPI barButtonWithIcon:@"speaker" target:self action:@selector(announce)];
+    speaker.accessibilityLabel = @"Abfahrten ansagen";
     self.navigationItem.rightBarButtonItems = @[star, speaker];
 }
 
@@ -154,9 +153,9 @@
 
 - (void)updateDirectionButton {
     NSString *dir = [BVGSettings directionFilterForStop:self.stopId];
-    [self.directionButton setTitle:(dir ? [NSString stringWithFormat:@"Nur Richtung %@  ✕", dir] : @"Alle Richtungen  ▾")
+    [self.directionButton setTitle:(dir ? [NSString stringWithFormat:@"→ nur %@   ✕", dir] : @"Alle Richtungen  ▾")
                           forState:UIControlStateNormal];
-    [self.directionButton setTitleColor:(dir ? [BVGTheme orange] : [BVGTheme link]) forState:UIControlStateNormal];
+    [self.directionButton setTitleColor:(dir ? [BVGTheme warningText] : [BVGTheme link]) forState:UIControlStateNormal];
 }
 
 - (void)chooseDirection {
@@ -244,8 +243,8 @@
         CardCell *cell = [tableView dequeueReusableCellWithIdentifier:@"warn"];
         if (!cell) cell = [[CardCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:@"warn"];
         cell.textLabel.text = [@"⚠︎  " stringByAppendingString:self.warnings[indexPath.row][@"summary"]];
-        cell.textLabel.font = [BVGTheme font:15 weight:UIFontWeightMedium];
-        cell.textLabel.textColor = [UIColor colorWithRed:0.62 green:0.36 blue:0 alpha:1];
+        cell.textLabel.font = [BVGTheme font:14 weight:UIFontWeightMedium];
+        cell.textLabel.textColor = [BVGTheme warningText];
         cell.textLabel.numberOfLines = 2;
         cell.cardColor = [BVGTheme accentSoft];
         cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;

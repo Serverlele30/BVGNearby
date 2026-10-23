@@ -1,20 +1,25 @@
-BVGNearby v8 – Schnellziele, Richtungsfilter, Hinweise, Teilen
-===============================================================
+BVGNearby v15 – Widget, Mitteilungs-Knoepfe, Akku, Feinschliff
+==============================================================
 
-1) Alle Dateien aus dem ZIP in den Ordner BVGNearby/ kopieren (ersetzen).
+Installation (im Projektordner, neben BVGNearby.xcodeproj):
+  unzip -o BVGNearby-v15.zip     # ersetzt BVGNearby/, legt Widget/ an, ersetzt deploy.sh
+  chmod +x deploy.sh
+  ./deploy.sh                    # macht den Methoden-Check jetzt selbst
 
-2) Neue Dateien ins Xcode-Projekt aufnehmen – automatisch:
-     sudo gem install xcodeproj        # einmalig
-     ruby BVGNearby/add_files.rb       # im Ordner neben BVGNearby.xcodeproj
+Kein Xcode-Target noetig: deploy.sh baut das Widget direkt mit clang,
+legt es als PlugIns/BVGWidget.appex in die App und signiert beides mit ldid.
+Macht das Widget Aerger:  NO_WIDGET=1 ./deploy.sh
 
-   Oder von Hand: File → Add Files … → DisruptionsViewController.h/.m
-   (Target BVGNearby anhaken, "Copy items" aus).
+Widget aktivieren: Mitteilungszentrale runterziehen -> "Heute" -> ganz unten
+"Bearbeiten" -> "BVG Abfahrten" hinzufuegen.
+Zeigt die ersten 2 Favoriten (je 3 Abfahrten), ohne Favoriten die naechsten
+Haltestellen per Standort. Antippen oeffnet die Haltestelle in der App.
 
-   Tipp: add_files.rb kannst du auch oben in deploy.sh eintragen,
-   dann passiert das bei jedem Build automatisch.
-
-3) ./deploy.sh
-
-Geändert: BVGSettings, SearchViewController, JourneyViewController,
-StopViewController, ViewController, SettingsViewController, GuidanceViewController
-Neu: DisruptionsViewController, add_files.rb
+Neu in v15:
+- Widget fuer die Mitteilungszentrale
+- Alternativ-Mitteilung: "Uebernehmen" / "Behalten" direkt auf dem Sperrbildschirm
+  (nach links wischen) bzw. im Banner (herunterziehen)
+- Navigation spart Akku: genaues GPS nur zu Fuss und kurz vor Ein-/Aussteigen
+- Lautsprecher-Symbol statt "Ansage", Ortungspfeil in der Karte
+- Gleis "2 (U7)" -> "2"; dezenteres Badge am Verbindung-Tab
+- Karte: kleinere Haltestellen und schlankere Statusleiste

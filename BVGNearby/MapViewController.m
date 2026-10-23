@@ -22,7 +22,7 @@ static const CLLocationDegrees kMaxRadarSpan = 0.045;   // weiter rausgezoomt ->
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-    self.navigationItem.title = @"Live-Karte";
+    self.navigationItem.title = @"Karte";
     self.vehicles = [NSMutableDictionary dictionary];
     self.stops = [NSMutableDictionary dictionary];
 
@@ -39,21 +39,20 @@ static const CLLocationDegrees kMaxRadarSpan = 0.045;   // weiter rausgezoomt ->
 
     // schwebende Status-Pille mit Schatten
     self.statusLabel = [[UILabel alloc] init];
-    self.statusLabel.font = [BVGTheme font:13 weight:UIFontWeightSemibold];
+    self.statusLabel.font = [BVGTheme font:12 weight:UIFontWeightMedium];
     self.statusLabel.textAlignment = NSTextAlignmentCenter;
     self.statusLabel.textColor = [BVGTheme textPrimary];
     self.statusLabel.backgroundColor = [UIColor whiteColor];
-    self.statusLabel.layer.cornerRadius = 17;
+    self.statusLabel.layer.cornerRadius = 14;
     self.statusLabel.layer.masksToBounds = NO;
     self.statusLabel.layer.shadowColor = [UIColor blackColor].CGColor;
-    self.statusLabel.layer.shadowOpacity = 0.18;
+    self.statusLabel.layer.shadowOpacity = 0.12;
     self.statusLabel.layer.shadowRadius = 6;
     self.statusLabel.layer.shadowOffset = CGSizeMake(0, 2);
     [self.view addSubview:self.statusLabel];
 
-    self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:@"Mein Standort"
-                                                                             style:UIBarButtonItemStylePlain
-                                                                            target:self action:@selector(centerOnUser)];
+    self.navigationItem.leftBarButtonItem = [BVGAPI barButtonWithIcon:@"locate" target:self action:@selector(centerOnUser)];
+    self.navigationItem.leftBarButtonItem.accessibilityLabel = @"Mein Standort";
     self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemRefresh
                                                                                            target:self action:@selector(reloadAll)];
 }
@@ -62,7 +61,7 @@ static const CLLocationDegrees kMaxRadarSpan = 0.045;   // weiter rausgezoomt ->
     [super viewDidLayoutSubviews];
     CGFloat w = self.view.bounds.size.width;
     CGFloat bottom = self.view.bounds.size.height - self.bottomLayoutGuide.length;
-    self.statusLabel.frame = CGRectMake(w / 2 - 130, bottom - 50, 260, 34);
+    self.statusLabel.frame = CGRectMake(w / 2 - 110, bottom - 42, 220, 28);
 }
 
 - (void)viewDidAppear:(BOOL)animated {
@@ -273,12 +272,12 @@ static const CLLocationDegrees kMaxRadarSpan = 0.045;   // weiter rausgezoomt ->
     if (a.kind == BVGAnnotationKindVehicle) {
         v.image = [BVGAPI badgeForLine:a.line];
         v.layer.shadowColor = [UIColor blackColor].CGColor;
-        v.layer.shadowOpacity = 0.35;
+        v.layer.shadowOpacity = 0.25;
         v.layer.shadowRadius = 2;
         v.layer.shadowOffset = CGSizeMake(0, 1);
         v.layer.zPosition = 10;
     } else {
-        v.image = [MapViewController stopIcon];
+        v.image = [BVGAPI stopSignWithSize:18];
         v.layer.zPosition = 0;
     }
     return v;

@@ -52,7 +52,7 @@
         self.selectedBackgroundView = [[CardBackgroundView alloc] init];
         self.textLabel.font = [BVGTheme font:16 weight:UIFontWeightRegular];
         self.textLabel.textColor = [BVGTheme textPrimary];
-        self.detailTextLabel.font = [BVGTheme font:14 weight:UIFontWeightRegular];
+        self.detailTextLabel.font = [BVGTheme font:13 weight:UIFontWeightRegular];
         self.detailTextLabel.textColor = [BVGTheme textSecondary];
         self.firstInSection = YES;
         self.lastInSection = YES;
@@ -102,9 +102,106 @@
     self.textLabel.font = [BVGTheme font:16 weight:UIFontWeightRegular];
     self.textLabel.textColor = [BVGTheme textPrimary];
     self.textLabel.textAlignment = NSTextAlignmentLeft;
-    self.detailTextLabel.font = [BVGTheme font:14 weight:UIFontWeightRegular];
+    self.detailTextLabel.font = [BVGTheme font:13 weight:UIFontWeightRegular];
     self.detailTextLabel.textColor = [BVGTheme textSecondary];
     self.contentView.alpha = 1;
+}
+
+@end
+
+#pragma mark - Mehrzeilige Zelle mit selbst berechneter Hoehe
+
+@implementation InfoCell
+
+static const CGFloat kPadV = 10, kPadH = 12, kGap = 10, kLineGap = 3;
+
+- (instancetype)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)reuseIdentifier {
+    self = [super initWithStyle:UITableViewCellStyleDefault reuseIdentifier:reuseIdentifier];
+    if (self) {
+        _iconView = [[UIImageView alloc] init];
+        _iconView.contentMode = UIViewContentModeLeft;
+        [self.contentView addSubview:_iconView];
+
+        _titleLabel = [[UILabel alloc] init];
+        _titleLabel.numberOfLines = 0;
+        _titleLabel.font = [BVGTheme font:15 weight:UIFontWeightSemibold];
+        _titleLabel.textColor = [BVGTheme textPrimary];
+        [self.contentView addSubview:_titleLabel];
+
+        _detailLabel = [[UILabel alloc] init];
+        _detailLabel.numberOfLines = 0;
+        _detailLabel.font = [BVGTheme font:13 weight:UIFontWeightRegular];
+        _detailLabel.textColor = [BVGTheme textSecondary];
+        [self.contentView addSubview:_detailLabel];
+    }
+    return self;
+}
+
+- (CGFloat)iconWidth {
+    UIImage *img = self.iconView.image;
+    return img ? MIN(MAX(img.size.width, 24), 64) : 0;
+}
+
+- (CGFloat)textX {
+    CGFloat iw = [self iconWidth];
+    return kPadH + (iw ? iw + kGap : 0);
+}
+
++ (CGFloat)heightOfLabel:(UILabel *)l width:(CGFloat)w {
+    if (!l.text.length && !l.attributedText.length) return 0;
+    if (w <= 0) return 0;
+    return ceil([l sizeThatFits:CGSizeMake(w, CGFLOAT_MAX)].height);
+}
+
+// Breite fuer den Text bei gegebener Tabellenbreite (Karten-Einrueckung + Pfeil rechts beruecksichtigt)
+- (CGFloat)textWidthForContentWidth:(CGFloat)cw {
+    return cw - [self textX] - kPadH;
+}
+
+- (CGFloat)heightForTextWidth:(CGFloat)tw {
+    CGFloat th = [InfoCell heightOfLabel:self.titleLabel width:tw];
+    CGFloat dh = [InfoCell heightOfLabel:self.detailLabel width:tw];
+    CGFloat h = kPadV + th + (th && dh ? kLineGap : 0) + dh + kPadV;
+    CGFloat iconH = self.iconView.image ? self.iconView.image.size.height + 2 * kPadV : 0;
+    return ceil(MAX(MAX(h, iconH), 44));
+}
+
+- (CGFloat)fittingHeightForTableWidth:(CGFloat)tableWidth {
+    CGFloat cw = tableWidth - 2 * [BVGTheme cardInset];
+    if (self.accessoryType != UITableViewCellAccessoryNone || self.accessoryView) cw -= 40;   // Pfeil/Schalter (lieber etwas zu viel Platz als abgeschnitten)
+    return [self heightForTextWidth:[self textWidthForContentWidth:cw]];
+}
+
+- (void)layoutSubviews {
+    [super layoutSubviews];
+    CGFloat w = self.contentView.bounds.size.width;
+    CGFloat h = self.contentView.bounds.size.height;
+    CGFloat tw = [self textWidthForContentWidth:w];
+    CGFloat th = [InfoCell heightOfLabel:self.titleLabel width:tw];
+    CGFloat dh = [InfoCell heightOfLabel:self.detailLabel width:tw];
+    CGFloat total = th + (th && dh ? kLineGap : 0) + dh;
+    CGFloat y = MAX(kPadV, floor((h - total) / 2));   // vertikal mittig
+
+    CGFloat iw = [self iconWidth];
+    if (iw) {
+        CGFloat ih = self.iconView.image.size.height;
+        self.iconView.frame = CGRectMake(kPadH, floor((h - ih) / 2), iw, ih);
+    }
+    self.titleLabel.frame = CGRectMake([self textX], y, tw, th);
+    self.detailLabel.frame = CGRectMake([self textX], y + th + (th && dh ? kLineGap : 0), tw, dh);
+}
+
+- (void)prepareForReuse {
+    [super prepareForReuse];
+    self.iconView.image = nil;
+    self.titleLabel.attributedText = nil;
+    self.titleLabel.text = nil;
+    self.detailLabel.text = nil;
+    self.titleLabel.font = [BVGTheme font:15 weight:UIFontWeightSemibold];
+    self.titleLabel.textColor = [BVGTheme textPrimary];
+    self.titleLabel.textAlignment = NSTextAlignmentLeft;
+    self.detailLabel.font = [BVGTheme font:13 weight:UIFontWeightRegular];
+    self.detailLabel.textColor = [BVGTheme textSecondary];
 }
 
 @end

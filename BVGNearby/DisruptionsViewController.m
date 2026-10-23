@@ -64,8 +64,6 @@
     self.largeTitle = @"Hinweise";
     NSInteger n = [DisruptionsViewController countInCollection:self.stops];
     self.largeSubtitle = n == 1 ? @"1 aktuelle Meldung" : [NSString stringWithFormat:@"%ld aktuelle Meldungen", (long)n];
-    self.tableView.rowHeight = UITableViewAutomaticDimension;
-    self.tableView.estimatedRowHeight = 80;
     if (!self.stops.count) [self showEmptyIcon:@"✅" title:@"Alles ruhig" text:@"Keine Störungen an deinen Haltestellen."];
 }
 
@@ -74,29 +72,35 @@
 }
 
 - (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section {
-    return self.stops[section][@"name"];
+    return [BVGAPI shortName:self.stops[section][@"name"]];
 }
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
     return [self.stops[section][@"items"] count];
 }
 
-- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
-    CardCell *cell = [[CardCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:nil];
+- (InfoCell *)cellAt:(NSIndexPath *)indexPath {
+    InfoCell *cell = [[InfoCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];
     NSDictionary *item = self.stops[indexPath.section][@"items"][indexPath.row];
     NSArray *lines = [item[@"lines"] array];
 
-    cell.textLabel.text = [@"⚠︎  " stringByAppendingString:item[@"summary"]];
-    cell.textLabel.font = [BVGTheme font:16 weight:UIFontWeightSemibold];
-    cell.textLabel.numberOfLines = 0;
+    cell.titleLabel.text = [@"⚠︎ " stringByAppendingString:item[@"summary"]];
+    cell.titleLabel.textColor = [BVGTheme warningText];
 
     NSString *body = [DisruptionsViewController plain:item[@"text"]];
-    if (body.length > 160) body = [[body substringToIndex:157] stringByAppendingString:@" …"];
-    NSString *lineText = lines.count ? [NSString stringWithFormat:@"Betrifft: %@\n", [lines componentsJoinedByString:@", "]] : @"";
-    cell.detailTextLabel.text = [lineText stringByAppendingString:body];
-    cell.detailTextLabel.numberOfLines = 0;
+    if (body.length > 140) body = [[body substringToIndex:137] stringByAppendingString:@" …"];
+    NSString *lineText = lines.count ? [NSString stringWithFormat:@"Betrifft %@ · ", [lines componentsJoinedByString:@", "]] : @"";
+    cell.detailLabel.text = [lineText stringByAppendingString:body];
     cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
     return cell;
+}
+
+- (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath {
+    return [[self cellAt:indexPath] fittingHeightForTableWidth:tableView.bounds.size.width];
+}
+
+- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
+    return [self cellAt:indexPath];
 }
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {

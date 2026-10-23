@@ -2,8 +2,7 @@
 #import "ViewController.h"
 #import "MapViewController.h"
 #import "JourneyViewController.h"
-#import "SearchViewController.h"
-#import "AlarmsViewController.h"
+#import "SettingsViewController.h"
 #import "StopViewController.h"
 #import "GuidanceManager.h"
 #import "GuidanceViewController.h"
@@ -48,18 +47,35 @@ static void BVGUncaughtException(NSException *e) {
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
     NSSetUncaughtExceptionHandler(&BVGUncaughtException);
+    // Knoepfe direkt in der Mitteilung (Sperrbildschirm: nach links wischen, Banner: herunterziehen)
+    UIMutableUserNotificationAction *accept = [[UIMutableUserNotificationAction alloc] init];
+    accept.identifier = @"accept";
+    accept.title = @"Übernehmen";
+    accept.activationMode = UIUserNotificationActivationModeBackground;
+    accept.authenticationRequired = NO;
+    UIMutableUserNotificationAction *keep = [[UIMutableUserNotificationAction alloc] init];
+    keep.identifier = @"keep";
+    keep.title = @"Behalten";
+    keep.activationMode = UIUserNotificationActivationModeBackground;
+    keep.authenticationRequired = NO;
+    UIMutableUserNotificationCategory *altCategory = [[UIMutableUserNotificationCategory alloc] init];
+    altCategory.identifier = GuidanceAlternativeCategory;
+    [altCategory setActions:@[accept, keep] forContext:UIUserNotificationActionContextDefault];
+    [altCategory setActions:@[accept, keep] forContext:UIUserNotificationActionContextMinimal];
+
     [application registerUserNotificationSettings:
         [UIUserNotificationSettings settingsForTypes:(UIUserNotificationTypeAlert | UIUserNotificationTypeSound | UIUserNotificationTypeBadge)
-                                          categories:nil]];
+                                          categories:[NSSet setWithObject:altCategory]]];
+    [BVGAPI syncWidget];   // Favoriten fuers Widget bereitstellen
 
     [BVGTheme applyAppearance];   // modernes Design (Farben, Leisten, Schriften)
 
+    // 4 Tabs: Suche steckt in "Abfahrten", Wecker & Einstellungen in "Mehr"
     NSArray *roots = @[
-        @[[[ViewController alloc] initWithStyle:UITableViewStylePlain],        @"In der Nähe", @"nearby"],
-        @[[[MapViewController alloc] init],                                     @"Karte",       @"map"],
-        @[[[JourneyViewController alloc] initWithStyle:UITableViewStyleGrouped], @"Route",      @"route"],
-        @[[[SearchViewController alloc] initWithStyle:UITableViewStylePlain],  @"Suche",       @"search"],
-        @[[[AlarmsViewController alloc] initWithStyle:UITableViewStylePlain],  @"Wecker",      @"alarm"],
+        @[[[ViewController alloc] initWithStyle:UITableViewStylePlain],          @"Abfahrten",  @"nearby"],
+        @[[[JourneyViewController alloc] initWithStyle:UITableViewStyleGrouped], @"Verbindung", @"route"],
+        @[[[MapViewController alloc] init],                                       @"Karte",      @"map"],
+        @[[[SettingsViewController alloc] initWithStyle:UITableViewStyleGrouped], @"Mehr",       @"more"],
     ];
     NSMutableArray *navs = [NSMutableArray array];
     NSInteger tag = 0;
@@ -71,6 +87,7 @@ static void BVGUncaughtException(NSException *e) {
 
     self.tabs = [[UITabBarController alloc] init];
     self.tabs.viewControllers = navs;
+    [BVGTheme applyTabBarIndicator:self.tabs.tabBar count:navs.count];
 
     self.window = [[UIWindow alloc] initWithFrame:[UIScreen mainScreen].bounds];
     self.window.backgroundColor = [BVGTheme background];
@@ -99,16 +116,16 @@ static void BVGUncaughtException(NSException *e) {
 }
 
 - (void)updateGuidanceBadge {
-    UIViewController *routeTab = self.tabs.viewControllers[2];
+    UIViewController *routeTab = self.tabs.viewControllers[1];
     GuidanceManager *g = [GuidanceManager shared];
     if (!g.active) routeTab.tabBarItem.badgeValue = nil;
-    else routeTab.tabBarItem.badgeValue = (g.status == GuidanceStatusBroken || g.alternative) ? @"!" : @"▶";
+    else routeTab.tabBarItem.badgeValue = (g.status == GuidanceStatusBroken || g.alternative) ? @"!" : @"";   // leer = kleiner Punkt
 }
 
 - (void)openGuidance {
     if (![GuidanceManager shared].active) return;
     [self.tabs dismissViewControllerAnimated:NO completion:nil];
-    self.tabs.selectedIndex = 2;
+    self.tabs.selectedIndex = 1;
     UINavigationController *nav = (UINavigationController *)self.tabs.selectedViewController;
     if ([nav.topViewController isKindOfClass:[GuidanceViewController class]]) return;
     [nav popToRootViewControllerAnimated:NO];
@@ -119,7 +136,7 @@ static void BVGUncaughtException(NSException *e) {
     for (NSString *icon in @[@"🚏 ", @"🔔 ", @"⚠ ", @"→"]) {
         text = [text stringByReplacingOccurrencesOfString:icon withString:([icon isEqualToString:@"→"] ? @"Richtung" : @"")];
     }
-    return [text stringByReplacingOccurrencesOfString:@"Antippen zum Entscheiden." withString:@""];
+    return [text stringByReplacingOccurrencesOfString:@"Wischen oder antippen zum Entscheiden." withString:@""];
 }
 
 - (void)updateAlarmBadge {
@@ -136,20 +153,54 @@ static void BVGUncaughtException(NSException *e) {
 #pragma mark - Spotlight: Haltestelle aus der iOS-Suche oeffnen
 
 - (BOOL)application:(UIApplication *)application continueUserActivity:(NSUserActivity *)userActivity
- restorationHandler:(void (^)(NSArray *))restorationHandler {
+ restorationHandler:(void (^)(NSArray<id<UIUserActivityRestoring>> * _Nullable))restorationHandler {
     if (![userActivity.activityType isEqualToString:CSSearchableItemActionType]) return NO;
     NSString *stopId = [BVGAPI stopIdFromSpotlightIdentifier:userActivity.userInfo[CSSearchableItemActivityIdentifier]];
     if (!stopId) return NO;
+    [self openStop:stopId name:nil];
+    return YES;
+}
 
+- (void)openStop:(NSString *)stopId name:(NSString *)name {
     [self.tabs dismissViewControllerAnimated:NO completion:nil];
     self.tabs.selectedIndex = 0;
     UINavigationController *nav = (UINavigationController *)self.tabs.selectedViewController;
     [nav popToRootViewControllerAnimated:NO];
-
     StopViewController *vc = [[StopViewController alloc] initWithStopId:stopId
-                                                                   name:[BVGAPI nameForStop:stopId] ?: @"Haltestelle"];
+                                                                   name:name ?: [BVGAPI nameForStop:stopId] ?: @"Haltestelle"];
     [nav pushViewController:vc animated:NO];
+}
+
+#pragma mark - Widget: bvgnearby://stop?id=...&name=...
+
+- (BOOL)handleURL:(NSURL *)url {
+    if (![url.scheme isEqualToString:@"bvgnearby"]) return NO;
+    NSMutableDictionary *q = [NSMutableDictionary dictionary];
+    for (NSString *pair in [url.query componentsSeparatedByString:@"&"]) {
+        NSArray *kv = [pair componentsSeparatedByString:@"="];
+        if (kv.count == 2) q[kv[0]] = [kv[1] stringByRemovingPercentEncoding] ?: kv[1];
+    }
+    if ([url.host isEqualToString:@"stop"] && q[@"id"]) [self openStop:q[@"id"] name:q[@"name"]];
+    else self.tabs.selectedIndex = 0;   // bvgnearby://  -> Abfahrten
     return YES;
+}
+
+- (BOOL)application:(UIApplication *)app openURL:(NSURL *)url options:(NSDictionary<NSString *, id> *)options {
+    return [self handleURL:url];
+}
+
+#pragma mark - Knoepfe in der Alternativ-Mitteilung
+
+- (void)application:(UIApplication *)application handleActionWithIdentifier:(NSString *)identifier
+forLocalNotification:(UILocalNotification *)notification completionHandler:(void (^)(void))completionHandler {
+    GuidanceManager *g = [GuidanceManager shared];
+    if ([identifier isEqualToString:@"accept"]) [g acceptAlternative];
+    else if ([identifier isEqualToString:@"keep"]) [g dismissAlternative];
+    // kurz Zeit lassen, damit neue Erinnerungen geplant und gespeichert werden
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        [[NSUserDefaults standardUserDefaults] synchronize];
+        if (completionHandler) completionHandler();
+    });
 }
 
 #pragma mark - Wecker

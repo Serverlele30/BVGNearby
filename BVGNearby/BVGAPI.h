@@ -26,8 +26,13 @@ extern NSString * const BVGAlarmsChangedNotification;
 + (UIImage *)badgeForLine:(NSDictionary *)line;
 + (UIImage *)badgeStripForLines:(NSArray *)lines;
 + (UIImage *)dotWithColor:(UIColor *)color filled:(BOOL)filled;
-+ (UIImage *)tabIconNamed:(NSString *)name;
++ (UIImage *)tabIconNamed:(NSString *)name;   // nearby, search, map, route, alarm, more
++ (UIImage *)smallIconNamed:(NSString *)name size:(CGFloat)size;   // Tab-Icon verkleinert
++ (UIImage *)stopSignWithSize:(CGFloat)diameter;   // gelber Kreis mit gruenem H
 + (NSString *)spokenLineName:(NSDictionary *)line;
++ (NSString *)shortName:(NSString *)name;   // "U Amrumer Str. (Berlin)" -> "U Amrumer Str."
++ (NSString *)platform:(NSString *)platform;   // "2 (U7)" -> "2"
++ (UIBarButtonItem *)barButtonWithIcon:(NSString *)icon target:(id)target action:(SEL)action;   // speaker, locate
 
 // Favoriten & zuletzt angesehen
 + (NSArray *)favorites;
@@ -36,6 +41,7 @@ extern NSString * const BVGAlarmsChangedNotification;
 + (NSArray *)recentStops;
 + (void)addRecentStop:(NSString *)stopId name:(NSString *)name;
 + (NSString *)nameForStop:(NSString *)stopId;
++ (void)syncWidget;   // Favoriten fuer das Mitteilungszentrale-Widget bereitstellen (App Group)
 
 // Spotlight (iOS 9 Suche / Siri-Vorschlaege)
 + (void)indexStopInSpotlight:(NSString *)stopId name:(NSString *)name;

@@ -15,13 +15,10 @@ typedef NS_ENUM(NSInteger, GSection) { GSectionStatus, GSectionAlternative, GSec
 - (void)viewDidLoad {
     [super viewDidLoad];
     self.navigationItem.title = @"Navigation";
-    self.tableView.rowHeight = UITableViewAutomaticDimension;
-    self.tableView.estimatedRowHeight = 48;
-
-    UIBarButtonItem *check = [[UIBarButtonItem alloc] initWithTitle:@"Prüfen" style:UIBarButtonItemStylePlain
-                                                             target:self action:@selector(check)];
-    UIBarButtonItem *speak = [[UIBarButtonItem alloc] initWithTitle:@"Ansage" style:UIBarButtonItemStylePlain
-                                                             target:self action:@selector(speak)];
+    UIBarButtonItem *check = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemRefresh
+                                                                           target:self action:@selector(check)];
+    UIBarButtonItem *speak = [BVGAPI barButtonWithIcon:@"speaker" target:self action:@selector(speak)];
+    speak.accessibilityLabel = @"Anweisung ansagen";
     self.navigationItem.rightBarButtonItems = @[check, speak];
 
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(reload)
@@ -140,47 +137,54 @@ typedef NS_ENUM(NSInteger, GSection) { GSectionStatus, GSectionAlternative, GSec
     return 0;
 }
 
-- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
-    CardCell *cell = [[CardCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:nil];
++ (NSString *)name:(NSDictionary *)place {
+    return [BVGAPI shortName:NN(NN(place)[@"name"])] ?: @"";
+}
+
+// "18:05 (+2)" bzw. "18:05"
++ (NSString *)time:(NSDate *)t delay:(id)delaySeconds {
+    NSInteger d = [NN(delaySeconds) integerValue] / 60;
+    return d > 0 ? [NSString stringWithFormat:@"%@ (+%ld)", [BVGAPI hhmm:t], (long)d] : [BVGAPI hhmm:t];
+}
+
+- (InfoCell *)cellAt:(NSIndexPath *)indexPath {
+    InfoCell *cell = [[InfoCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];
     cell.selectionStyle = UITableViewCellSelectionStyleNone;
-    cell.textLabel.numberOfLines = 0;
-    cell.detailTextLabel.numberOfLines = 0;
     GuidanceManager *g = [GuidanceManager shared];
     NSArray *legs = [self legs];
 
     switch ([self kind:indexPath.section]) {
         case GSectionStatus: {
             if (indexPath.row == 0) {
-                cell.textLabel.text = [g currentInstruction];
-                cell.textLabel.font = [BVGTheme font:20 weight:UIFontWeightSemibold];
-                cell.cardColor = [BVGTheme accent];
+                cell.titleLabel.text = [BVGAPI shortName:[g currentInstruction]];
+                cell.titleLabel.font = [BVGTheme font:16 weight:UIFontWeightSemibold];
+                cell.titleLabel.textColor = [UIColor whiteColor];
+                cell.cardColor = [BVGTheme textPrimary];   // aktuelle Anweisung hervorgehoben
             } else if (indexPath.row == 1) {
                 switch (g.status) {
                     case GuidanceStatusOK:
-                        cell.textLabel.text = @"✓ Alle Anschlüsse erreichbar";
-                        cell.textLabel.textColor = [BVGTheme green];
+                        cell.titleLabel.text = @"✓ Alle Anschlüsse erreichbar";
+                        cell.titleLabel.textColor = [BVGTheme green];
                         break;
                     case GuidanceStatusAtRisk:
-                        cell.textLabel.text = [@"⚠ " stringByAppendingString:g.problemText ?: @"Umstieg knapp"];
-                        cell.textLabel.textColor = [BVGTheme orange];
+                        cell.titleLabel.text = [@"⚠︎ " stringByAppendingString:g.problemText ?: @"Umstieg knapp"];
+                        cell.titleLabel.textColor = [BVGTheme warningText];
                         break;
                     case GuidanceStatusBroken:
-                        cell.textLabel.text = [@"✕ " stringByAppendingString:g.problemText ?: @"Route nicht mehr möglich"];
-                        cell.textLabel.textColor = [BVGTheme red];
+                        cell.titleLabel.text = [@"✕ " stringByAppendingString:g.problemText ?: @"Route nicht mehr möglich"];
+                        cell.titleLabel.textColor = [BVGTheme red];
                         break;
                     case GuidanceStatusDone:
-                        cell.textLabel.text = @"🎉 Ziel erreicht";
+                        cell.titleLabel.text = @"Ziel erreicht";
                         break;
                 }
-                cell.textLabel.font = [BVGTheme font:16 weight:UIFontWeightSemibold];
+                cell.titleLabel.font = [BVGTheme font:14 weight:UIFontWeightSemibold];
             } else {
                 NSDictionary *last = legs.lastObject;
-                NSDate *arr = [GuidanceManager legArrival:last];
-                NSInteger delay = [NN(last[@"arrivalDelay"]) integerValue] / 60;
-                cell.textLabel.text = [NSString stringWithFormat:@"Ankunft %@%@", [BVGAPI hhmm:arr],
-                                       delay > 0 ? [NSString stringWithFormat:@" (+%ld)", (long)delay] : @""];
-                cell.detailTextLabel.text = NN(NN(last[@"destination"])[@"name"]);
-                cell.textLabel.font = [BVGTheme digits:17 weight:UIFontWeightMedium];
+                cell.titleLabel.text = [NSString stringWithFormat:@"Ankunft %@",
+                                        [GuidanceViewController time:[GuidanceManager legArrival:last] delay:last[@"arrivalDelay"]]];
+                cell.titleLabel.font = [BVGTheme digits:14 weight:UIFontWeightSemibold];
+                cell.detailLabel.text = [GuidanceViewController name:last[@"destination"]];
             }
             return cell;
         }
@@ -190,25 +194,20 @@ typedef NS_ENUM(NSInteger, GSection) { GSectionStatus, GSectionAlternative, GSec
             if (indexPath.row == 0) {
                 NSMutableArray *lines = [NSMutableArray array];
                 for (NSDictionary *l in alt) if (![GuidanceManager isWalk:l]) [lines addObject:l[@"line"]];
-                cell.imageView.image = [BVGAPI badgeStripForLines:lines];
+                cell.iconView.image = [BVGAPI badgeStripForLines:lines];
                 NSDate *dep = [GuidanceManager legDeparture:alt.firstObject];
                 NSDate *arr = [GuidanceManager legArrival:alt.lastObject];
                 NSDate *oldArr = [GuidanceManager legArrival:legs.lastObject];
                 NSInteger diff = (arr && oldArr) ? (NSInteger)round([arr timeIntervalSinceDate:oldArr] / 60.0) : 0;
-                cell.textLabel.text = [NSString stringWithFormat:@"%@ → %@", [BVGAPI hhmm:dep], [BVGAPI hhmm:arr]];
-                cell.textLabel.font = [BVGTheme digits:17 weight:UIFontWeightSemibold];
-                cell.detailTextLabel.text = diff > 0 ? [NSString stringWithFormat:@"%ld min später als geplant", (long)diff]
-                                                     : @"Ankunft wie geplant oder früher";
-            } else if (indexPath.row == 1) {
-                cell.textLabel.text = @"✓ Alternative übernehmen";
-                cell.textLabel.textColor = [BVGTheme green];
-                cell.textLabel.font = [BVGTheme font:17 weight:UIFontWeightSemibold];
-                cell.textLabel.textAlignment = NSTextAlignmentCenter;
-                cell.selectionStyle = UITableViewCellSelectionStyleDefault;
+                cell.titleLabel.text = [NSString stringWithFormat:@"%@ – %@", [BVGAPI hhmm:dep], [BVGAPI hhmm:arr]];
+                cell.titleLabel.font = [BVGTheme digits:15 weight:UIFontWeightSemibold];
+                cell.detailLabel.text = diff > 0 ? [NSString stringWithFormat:@"%ld min später als geplant", (long)diff]
+                                                 : @"Ankunft wie geplant oder früher";
             } else {
-                cell.textLabel.text = @"Aktuelle Route behalten";
-                cell.textLabel.textColor = [BVGTheme textSecondary];
-                cell.textLabel.textAlignment = NSTextAlignmentCenter;
+                BOOL accept = indexPath.row == 1;
+                cell.titleLabel.text = accept ? @"Alternative übernehmen" : @"Aktuelle Route behalten";
+                cell.titleLabel.textColor = accept ? [BVGTheme green] : [BVGTheme textSecondary];
+                cell.titleLabel.textAlignment = NSTextAlignmentCenter;
                 cell.selectionStyle = UITableViewCellSelectionStyleDefault;
             }
             return cell;
@@ -220,51 +219,62 @@ typedef NS_ENUM(NSInteger, GSection) { GSectionStatus, GSectionAlternative, GSec
             BOOL done = indexPath.row < current;
             NSDate *dep = [GuidanceManager legDeparture:leg];
             NSDate *arr = [GuidanceManager legArrival:leg];
-            NSString *origin = NN(NN(leg[@"origin"])[@"name"]) ?: @"";
-            NSString *dest = NN(NN(leg[@"destination"])[@"name"]) ?: @"";
+            NSString *origin = [GuidanceViewController name:leg[@"origin"]];
+            NSString *dest = [GuidanceViewController name:leg[@"destination"]];
 
             if ([GuidanceManager isWalk:leg]) {
                 NSInteger mins = (dep && arr) ? (NSInteger)round([arr timeIntervalSinceDate:dep] / 60.0) : 0;
-                cell.textLabel.text = [NSString stringWithFormat:@"🚶 %ld min zu Fuß", (long)mins];
-                cell.detailTextLabel.text = [@"bis " stringByAppendingString:dest];
+                if (mins <= 1 && ([origin isEqualToString:dest] || !NN(leg[@"distance"]) || [NN(leg[@"distance"]) integerValue] < 80)) {
+                    cell.titleLabel.text = @"Umsteigen";
+                    cell.detailLabel.text = [@"am Bahnhof " stringByAppendingString:dest];
+                } else {
+                    cell.titleLabel.text = [NSString stringWithFormat:@"🚶 %ld min zu Fuß", (long)MAX(mins, 1)];
+                    cell.detailLabel.text = [@"bis " stringByAppendingString:dest];
+                }
+                cell.titleLabel.font = [BVGTheme font:14 weight:UIFontWeightMedium];
             } else {
-                cell.imageView.image = [BVGAPI badgeForLine:leg[@"line"]];
-                NSInteger dd = [NN(leg[@"departureDelay"]) integerValue] / 60;
-                cell.textLabel.text = [NSString stringWithFormat:@"%@%@ %@ → %@", [BVGAPI hhmm:dep],
-                                       dd > 0 ? [NSString stringWithFormat:@" (+%ld)", (long)dd] : @"",
-                                       origin, NN(leg[@"direction"]) ?: @""];
-                NSString *dp = NN(leg[@"departurePlatform"]), *ap = NN(leg[@"arrivalPlatform"]);
-                cell.detailTextLabel.text = [NSString stringWithFormat:@"%@%@ aussteigen: %@ um %@%@",
-                                             dp ? [NSString stringWithFormat:@"Gl. %@ · ", dp] : @"",
-                                             [NN(leg[@"cancelled"]) boolValue] ? @"FÄLLT AUS · " : @"",
-                                             dest, [BVGAPI hhmm:arr], ap ? [NSString stringWithFormat:@" (Gl. %@)", ap] : @""];
+                cell.iconView.image = [BVGAPI badgeForLine:leg[@"line"]];
+                cell.titleLabel.text = [@"→ " stringByAppendingString:[BVGAPI shortName:NN(leg[@"direction"])] ?: @""];
+                cell.titleLabel.font = [BVGTheme font:15 weight:(indexPath.row == current ? UIFontWeightSemibold : UIFontWeightRegular)];
+
+                NSString *dp = [BVGAPI platform:NN(leg[@"departurePlatform"])], *ap = [BVGAPI platform:NN(leg[@"arrivalPlatform"])];
+                NSMutableString *d = [NSMutableString string];
+                if ([NN(leg[@"cancelled"]) boolValue]) [d appendString:@"FÄLLT AUS\n"];
+                [d appendFormat:@"ab %@  %@%@", [GuidanceViewController time:dep delay:leg[@"departureDelay"]], origin,
+                                dp ? [NSString stringWithFormat:@" · Gl. %@", dp] : @""];
+                [d appendFormat:@"\nan %@  %@%@", [GuidanceViewController time:arr delay:leg[@"arrivalDelay"]], dest,
+                                ap ? [NSString stringWithFormat:@" · Gl. %@", ap] : @""];
+                cell.detailLabel.text = d;
+                cell.detailLabel.font = [BVGTheme digits:13 weight:UIFontWeightRegular];
                 cell.accessoryType = NN(leg[@"tripId"]) ? UITableViewCellAccessoryDisclosureIndicator : UITableViewCellAccessoryNone;
                 cell.selectionStyle = UITableViewCellSelectionStyleDefault;
             }
-            cell.textLabel.font = indexPath.row == current ? [BVGTheme font:15 weight:UIFontWeightSemibold] : [BVGTheme font:15 weight:UIFontWeightRegular];
-            cell.textLabel.textColor = done ? [BVGTheme textTertiary] : [BVGTheme textPrimary];
-            cell.detailTextLabel.font = [BVGTheme font:13 weight:UIFontWeightRegular];
-            cell.detailTextLabel.textColor = [NN(leg[@"cancelled"]) boolValue] ? [BVGTheme red] : [BVGTheme textSecondary];
+            cell.titleLabel.textColor = done ? [BVGTheme textTertiary] : [BVGTheme textPrimary];
+            cell.detailLabel.textColor = [NN(leg[@"cancelled"]) boolValue] ? [BVGTheme red] : [BVGTheme textSecondary];
             if (indexPath.row == current) cell.cardColor = [BVGTheme accentSoft];
+            if (done) cell.contentView.alpha = 0.5;
             return cell;
         }
 
         case GSectionEnd: {
-            if (indexPath.row == 0) {
-                cell.textLabel.text = @"Ankunftszeit teilen";
-                cell.textLabel.textColor = [BVGTheme link];
-                cell.textLabel.textAlignment = NSTextAlignmentCenter;
-                cell.selectionStyle = UITableViewCellSelectionStyleDefault;
-                return cell;
-            }
-            cell.textLabel.text = @"Navigation beenden";
-            cell.textLabel.textColor = [BVGTheme red];
-            cell.textLabel.textAlignment = NSTextAlignmentCenter;
+            BOOL share = indexPath.row == 0;
+            cell.titleLabel.text = share ? @"Ankunftszeit teilen" : @"Navigation beenden";
+            cell.titleLabel.font = [BVGTheme font:15 weight:UIFontWeightRegular];
+            cell.titleLabel.textColor = share ? [BVGTheme link] : [BVGTheme red];
+            cell.titleLabel.textAlignment = NSTextAlignmentCenter;
             cell.selectionStyle = UITableViewCellSelectionStyleDefault;
             return cell;
         }
     }
     return cell;
+}
+
+- (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath {
+    return [[self cellAt:indexPath] fittingHeightForTableWidth:tableView.bounds.size.width];
+}
+
+- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
+    return [self cellAt:indexPath];
 }
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {

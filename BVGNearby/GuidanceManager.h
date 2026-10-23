@@ -9,6 +9,7 @@ typedef NS_ENUM(NSInteger, GuidanceStatus) {
 };
 
 extern NSString * const GuidanceChangedNotification;
+extern NSString * const GuidanceAlternativeCategory;   // Mitteilungs-Kategorie mit Knoepfen
 
 // Begleitet eine Verbindung: Ein-/Aussteige-Erinnerungen, regelmaessige Echtzeit-Pruefung,
 // Alternativsuche bei Problemen. Die Entscheidung trifft immer der Nutzer.

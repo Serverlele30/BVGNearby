@@ -6,6 +6,8 @@
 NSString * const GuidanceChangedNotification = @"GuidanceChanged";
 
 static NSString * const kSavedJourneyKey   = @"guidanceJourney";
+static NSString * const kSavedAltKey       = @"guidanceAlternative";   // fuer "Uebernehmen" direkt aus der Mitteilung
+NSString * const GuidanceAlternativeCategory = @"ALTERNATIVE";
 static const NSTimeInterval kCheckInterval = 60;     // Echtzeit-Pruefung jede Minute
 #define kBoardLead   ((NSTimeInterval)[BVGSettings boardLeadMinutes] * 60)   // Einsteigen-Hinweis (Einstellung)
 static const CLLocationDistance kExitRadius = 400;   // Backup: Aussteigen per GPS-Naehe
@@ -25,6 +27,7 @@ static const CLLocationDistance kExitRadius = 400;   // Backup: Aussteigen per G
 @property (nonatomic, strong) NSTimer *timer;
 @property (nonatomic, strong) CLLocationManager *locationManager;
 @property (nonatomic, strong) CLLocation *lastLocation;
+@property (nonatomic, assign) BOOL preciseLocation;
 @end
 
 @implementation GuidanceManager
@@ -107,6 +110,14 @@ static const CLLocationDistance kExitRadius = 400;   // Backup: Aussteigen per G
     [self changed];
 }
 
+// Alternative wird mitgespeichert: so funktioniert "Uebernehmen" auch, wenn iOS die App zwischendurch beendet hat
+- (void)setAlternative:(NSDictionary *)alternative {
+    _alternative = alternative;
+    NSData *data = alternative ? [NSJSONSerialization dataWithJSONObject:alternative options:0 error:nil] : nil;
+    if (data) [[NSUserDefaults standardUserDefaults] setObject:data forKey:kSavedAltKey];
+    else [[NSUserDefaults standardUserDefaults] removeObjectForKey:kSavedAltKey];
+}
+
 - (void)save {
     NSData *data = [NSJSONSerialization dataWithJSONObject:self.journey options:0 error:nil];
     if (data) [[NSUserDefaults standardUserDefaults] setObject:data forKey:kSavedJourneyKey];
@@ -125,6 +136,11 @@ static const CLLocationDistance kExitRadius = 400;   // Backup: Aussteigen per G
     self.journey = j;
     self.active = YES;
     self.exitAlertedLegs = [NSMutableSet set];
+    NSData *altData = [[NSUserDefaults standardUserDefaults] objectForKey:kSavedAltKey];
+    if ([altData isKindOfClass:[NSData class]]) {
+        NSDictionary *alt = [NSJSONSerialization JSONObjectWithData:altData options:0 error:nil];
+        if ([alt isKindOfClass:[NSDictionary class]]) _alternative = alt;
+    }
     [self startMonitoring];
     [self checkNow];
 }
@@ -151,13 +167,40 @@ static const CLLocationDistance kExitRadius = 400;   // Backup: Aussteigen per G
     if ([CLLocationManager authorizationStatus] == kCLAuthorizationStatusNotDetermined) {
         [self.locationManager requestWhenInUseAuthorization];
     }
+    self.preciseLocation = YES;   // erzwingt die erste Einstellung
+    [self updateLocationAccuracy];
     [self.locationManager startUpdatingLocation];
+}
+
+// Akku sparen: genaues GPS nur, wenn es gebraucht wird (zu Fuss, kurz vor dem Einsteigen oder Aussteigen).
+// Sonst grobe Ortung ueber Funkzellen - die App laeuft trotzdem im Hintergrund weiter und prueft jede Minute.
+- (BOOL)needsPreciseLocation {
+    NSArray *legs = [self legs];
+    NSInteger idx = [self currentLegIndex];
+    if (idx >= (NSInteger)legs.count) return NO;
+    NSDictionary *leg = legs[idx];
+    if ([GuidanceManager isWalk:leg]) return YES;
+    NSDate *dep = [GuidanceManager legDeparture:leg];
+    NSDate *arr = [GuidanceManager legArrival:leg];
+    if (dep && [dep timeIntervalSinceNow] < 5 * 60 && [dep timeIntervalSinceNow] > -60) return YES;   // Einsteigen
+    if (arr && [arr timeIntervalSinceNow] < 6 * 60) return YES;                                      // Aussteigen
+    return NO;
+}
+
+- (void)updateLocationAccuracy {
+    if (!self.locationManager) return;
+    BOOL precise = [self needsPreciseLocation];
+    if (precise == self.preciseLocation && self.locationManager.distanceFilter > 0) return;
+    self.preciseLocation = precise;
+    self.locationManager.desiredAccuracy = precise ? kCLLocationAccuracyHundredMeters : kCLLocationAccuracyThreeKilometers;
+    self.locationManager.distanceFilter  = precise ? 30 : 1000;
 }
 
 #pragma mark - Pruefen
 
 - (void)checkNow {
     if (!self.active || self.checking) return;
+    [self updateLocationAccuracy];
     self.checking = YES;
     [self changed];
 
@@ -331,7 +374,7 @@ static const CLLocationDistance kExitRadius = 400;   // Backup: Aussteigen per G
             NSInteger diff = (currentArrival && bestArr) ? (NSInteger)round([bestArr timeIntervalSinceDate:currentArrival] / 60.0) : 0;
             NSMutableArray *lines = [NSMutableArray array];
             for (NSDictionary *l in best[@"legs"]) if (![GuidanceManager isWalk:l]) [lines addObject:NN(l[@"line"][@"name"]) ?: @"?"];
-            NSString *text = [NSString stringWithFormat:@"⚠ %@ Alternative: %@, Ankunft %@%@. Antippen zum Entscheiden.",
+            NSString *text = [NSString stringWithFormat:@"⚠ %@ Alternative: %@, Ankunft %@%@. Wischen oder antippen zum Entscheiden.",
                               problem, [lines componentsJoinedByString:@" → "], [BVGAPI hhmm:bestArr],
                               diff > 0 ? [NSString stringWithFormat:@" (+%ld min)", (long)diff] : @""];
             [self notifyNow:text kind:@"alternative"];
@@ -364,6 +407,7 @@ static const CLLocationDistance kExitRadius = 400;   // Backup: Aussteigen per G
 }
 
 - (NSString *)platformText:(NSString *)platform {
+    platform = [BVGAPI platform:platform];
     return platform ? [NSString stringWithFormat:@", Gleis %@", platform] : @"";
 }
 
@@ -408,6 +452,7 @@ static const CLLocationDistance kExitRadius = 400;   // Backup: Aussteigen per G
     n.alertBody = text;
     n.soundName = UILocalNotificationDefaultSoundName;   // bei Stumm: nur Vibration (System)
     n.userInfo = @{ @"kind": kind };
+    if ([kind isEqualToString:@"alternative"]) n.category = GuidanceAlternativeCategory;   // Knoepfe Uebernehmen/Behalten
     [[UIApplication sharedApplication] presentLocalNotificationNow:n];
 }
 
@@ -470,6 +515,7 @@ static const CLLocationDistance kExitRadius = 400;   // Backup: Aussteigen per G
 - (void)locationManager:(CLLocationManager *)manager didUpdateLocations:(NSArray<CLLocation *> *)locations {
     self.lastLocation = locations.lastObject;
     if (!self.active) return;
+    [self updateLocationAccuracy];
 
     // Hintergrund: falls der Timer nicht feuert, haelt der Standort die Pruefung am Laufen
     if (!self.lastCheck || [self.lastCheck timeIntervalSinceNow] < -kCheckInterval) [self checkNow];
